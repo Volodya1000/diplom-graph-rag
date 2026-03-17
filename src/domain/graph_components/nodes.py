@@ -30,3 +30,4 @@ class InstanceNode(BaseModel):
     class_name: str
     chunk_id: str
     embedding: Optional[List[float]] = None
+    aliases: List[str] = Field(default_factory=list)     # ← НОВОЕ

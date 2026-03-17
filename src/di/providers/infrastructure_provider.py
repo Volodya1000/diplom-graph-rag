@@ -26,7 +26,10 @@ from src.infrastructure.embeddings.sentence_transformer_embedding_service import
 )
 from src.infrastructure.llm.clients.ollama_client import OllamaClient
 from src.infrastructure.docling.doc_processor import DocProcessor
-
+from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
+from src.infrastructure.llm.clients.ollama_synonym_resolver import (
+    OllamaSynonymResolver,
+)
 
 class InfrastructureProvider(Provider):
 
@@ -77,3 +80,11 @@ class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_parser(self) -> DocProcessor:
         return DocProcessor(ChunkingSettings(), ParsingSettings())
+
+
+
+    @provide(scope=Scope.APP)
+    def provide_synonym_resolver(
+            self, settings: OllamaSettings,
+    ) -> ISynonymResolver:
+        return OllamaSynonymResolver(settings)

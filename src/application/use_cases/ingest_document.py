@@ -1,8 +1,5 @@
 """
-Use Case: Полная индексация PDF → граф знаний.
-
-Зависимости разделены по ISP — каждый репозиторий отвечает
-за свою область ответственности.
+Дополнение: post-processing с synonym resolution.
 """
 
 import logging
@@ -21,6 +18,7 @@ from src.infrastructure.docling.doc_processor import DocProcessor
 from src.application.services.entity_resolution_service import (
     EntityResolutionOrchestrator,
 )
+from src.application.services.post_processing_service import PostProcessingService
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +34,7 @@ class IngestDocumentUseCase:
         embedder: IEmbeddingService,
         llm: ILLMClient,
         er_svc: EntityResolutionOrchestrator,
+        post_processor: PostProcessingService,    # ← НОВОЕ
     ):
         self.parser = parser
         self.schema_repo = schema_repo
@@ -45,33 +44,25 @@ class IngestDocumentUseCase:
         self.embedder = embedder
         self.llm = llm
         self.er_svc = er_svc
-
-    # ------------------------------------------------------------------
+        self.post_processor = post_processor
 
     async def _ensure_tbox(self) -> None:
         await self.schema_repo.ensure_indexes()
-
         current_classes = await self.schema_repo.get_tbox_classes()
-        current_relations = await self.schema_repo.get_schema_relations()
-
         if current_classes:
-            logger.info(
-                f"📚 T-Box: {len(current_classes)} классов, "
-                f"{len(current_relations)} отношений"
-            )
             return
-
         logger.warning("⚠️ T-Box пуст — автоинициализация…")
         from src.domain.ontology.base_tbox import (
             BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS,
         )
         await self.schema_repo.save_tbox_classes(BASE_TBOX_CLASSES)
         await self.schema_repo.save_schema_relations(BASE_TBOX_RELATIONS)
-        logger.info("📚 T-Box создан")
 
-    # ------------------------------------------------------------------
-
-    async def execute(self, file_path: Path) -> str:
+    async def execute(
+        self,
+        file_path: Path,
+        skip_synonyms: bool = False,
+    ) -> str:
         logger.info(f"📄 Start ingest: {file_path}")
         await self._ensure_tbox()
 
@@ -79,8 +70,6 @@ class IngestDocumentUseCase:
 
         # === PARSE ===
         dl_doc = self.parser.parse_pdf(str(file_path))
-        logger.info("📥 PDF parsed")
-
         processed_chunks = self.parser.chunk_document(dl_doc)
         logger.info(f"✂️ Chunks: {len(processed_chunks)}")
 
@@ -102,7 +91,6 @@ class IngestDocumentUseCase:
         )
         for i, chunk in enumerate(domain_chunks):
             chunk.embedding = embeddings[i]
-        logger.info(f"🧠 Embeddings: {len(embeddings)}")
 
         # === SAVE DOC + CHUNKS ===
         await self.doc_repo.save_document(doc)
@@ -111,21 +99,13 @@ class IngestDocumentUseCase:
 
         doc_agg = DocumentAggregate(document=doc, chunks=domain_chunks)
         await self.edge_repo.save_edges(doc_agg.build_edges())
-        logger.info(f"💾 Документ + {len(domain_chunks)} чанков сохранены")
 
         # === ENTITY + TRIPLE PIPELINE ===
         registry = self.er_svc.create_registry()
-
-        total_entities = 0
-        total_triples = 0
+        total_entities = total_triples = 0
         saved_instance_ids: set = set()
 
         for chunk in domain_chunks:
-            logger.info(
-                f"🔍 Чанк {chunk.chunk_index} "
-                f"({len(chunk.text)} символов)"
-            )
-
             current_classes = await self.schema_repo.get_tbox_classes()
             current_relations = await self.schema_repo.get_schema_relations()
 
@@ -137,10 +117,6 @@ class IngestDocumentUseCase:
                     known_entities=registry.format_known_entities(),
                 )
             )
-            logger.info(
-                f"🤖 Извлечено: {len(extraction.entities)} сущностей, "
-                f"{len(extraction.triples)} троек"
-            )
 
             if not extraction.entities and not extraction.triples:
                 continue
@@ -148,18 +124,8 @@ class IngestDocumentUseCase:
             (
                 instances, new_classes, resolved_triples, new_relations,
             ) = await self.er_svc.process_extraction(
-                extraction,
-                current_classes,
-                current_relations,
-                chunk.chunk_id,
-                registry,
-            )
-
-            logger.info(
-                f"🧩 ER → instances={len(instances)}, "
-                f"triples={len(resolved_triples)}, "
-                f"new_classes={len(new_classes)}, "
-                f"new_rels={len(new_relations)}"
+                extraction, current_classes, current_relations,
+                chunk.chunk_id, registry,
             )
 
             if new_classes:
@@ -181,9 +147,25 @@ class IngestDocumentUseCase:
             total_triples += len(resolved_triples)
 
         logger.info(
-            f"✅ Ingest завершён: "
-            f"entities={total_entities}, "
-            f"triples={total_triples}, "
+            f"📊 Extraction done: entities={total_entities}, "
+            f"triples={total_triples}"
+        )
+
+        # === POST-PROCESSING: SYNONYM RESOLUTION ===
+        if not skip_synonyms and total_entities > 1:
+            logger.info("🔍 Post-processing: synonym resolution…")
+            syn_result = await self.post_processor.resolve_synonyms(
+                doc_id=doc.doc_id,
+                document_context=f"Документ: {file_path.name}",
+            )
+            logger.info(
+                f"🔗 Synonyms: merged={syn_result.merged_count}, "
+                f"groups={len(syn_result.groups)}"
+            )
+
+        logger.info(
+            f"✅ Ingest complete: doc_id={doc.doc_id}, "
+            f"entities={total_entities}, triples={total_triples}, "
             f"unique={len(saved_instance_ids)}"
         )
         return doc.doc_id

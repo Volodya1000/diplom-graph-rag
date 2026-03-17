@@ -30,3 +30,31 @@ class IInstanceRepository(ABC):
     async def get_triples_by_chunk(
         self, chunk_id: str,
     ) -> List[dict]: ...
+
+    @abstractmethod
+    async def get_instances_by_document(
+            self, doc_id: str,
+    ) -> List[InstanceNode]:
+        """Все сущности документа (через чанки)."""
+        ...
+
+    @abstractmethod
+    async def merge_instances(
+            self,
+            canonical_id: str,
+            canonical_name: str,
+            alias_ids: List[str],
+            aliases: List[str],
+    ) -> None:
+        """
+        Мержит alias-ноды в каноническую:
+        - Переносит все рёбра на canonical_id
+        - Обновляет aliases[]
+        - Удаляет alias-ноды
+        """
+        ...
+
+    @abstractmethod
+    async def get_all_instances(self) -> List[InstanceNode]:
+        """Все Instance-ноды в графе (для community detection)."""
+        ...

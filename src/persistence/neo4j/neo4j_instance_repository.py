@@ -131,3 +131,114 @@ class Neo4jInstanceRepository(Neo4jBaseRepository, IInstanceRepository):
                    tgt.class_name AS object_type
         """, {"chunk_id": chunk_id})
         return [map_to_triple_dict(r) for r in data]
+
+    async def get_instances_by_document(
+            self, doc_id: str,
+    ) -> List[InstanceNode]:
+        data = await self._fetch_all("""
+               MATCH (c:Chunk {doc_id: $doc_id})
+               MATCH (i:Instance)-[:MENTIONED_IN]->(c)
+               RETURN DISTINCT
+                      i.instance_id AS instance_id,
+                      i.name        AS name,
+                      i.class_name  AS class_name,
+                      i.chunk_id    AS chunk_id,
+                      i.aliases     AS aliases,
+                      i.embedding   AS embedding
+           """, {"doc_id": doc_id})
+        return [map_to_instance(r) for r in data]
+
+    async def merge_instances(
+            self,
+            canonical_id: str,
+            canonical_name: str,
+            alias_ids: List[str],
+            aliases: List[str],
+    ) -> None:
+        """
+        Мержит alias-ноды в каноническую:
+        1. Переносит входящие рёбра alias → canonical
+        2. Переносит исходящие рёбра alias → canonical
+        3. Обновляет canonical.aliases
+        4. Удаляет alias-ноды
+        """
+        if not alias_ids:
+            return
+
+        async with self._sm.session() as s:
+            # 1. Переносим входящие рёбра
+            await s.run("""
+                   UNWIND $alias_ids AS aid
+                   MATCH (alias:Instance {instance_id: aid})<-[r]-(source)
+                   WHERE source.instance_id <> $canonical_id
+                   WITH source, alias, r, type(r) AS rel_type, properties(r) AS props
+                   MATCH (canonical:Instance {instance_id: $canonical_id})
+                   CALL apoc.create.relationship(source, rel_type, props, canonical) 
+                   YIELD rel
+                   DELETE r
+               """, {
+                "alias_ids": alias_ids,
+                "canonical_id": canonical_id,
+            })
+
+            # 2. Переносим исходящие рёбра
+            await s.run("""
+                   UNWIND $alias_ids AS aid
+                   MATCH (alias:Instance {instance_id: aid})-[r]->(target)
+                   WHERE target.instance_id <> $canonical_id
+                   WITH alias, target, r, type(r) AS rel_type, properties(r) AS props
+                   MATCH (canonical:Instance {instance_id: $canonical_id})
+                   CALL apoc.create.relationship(canonical, rel_type, props, target)
+                   YIELD rel
+                   DELETE r
+               """, {
+                "alias_ids": alias_ids,
+                "canonical_id": canonical_id,
+            })
+
+            # 3. Переносим MENTIONED_IN
+            await s.run("""
+                   UNWIND $alias_ids AS aid
+                   MATCH (alias:Instance {instance_id: aid})-[r:MENTIONED_IN]->(c:Chunk)
+                   MATCH (canonical:Instance {instance_id: $canonical_id})
+                   MERGE (canonical)-[:MENTIONED_IN]->(c)
+                   DELETE r
+               """, {
+                "alias_ids": alias_ids,
+                "canonical_id": canonical_id,
+            })
+
+            # 4. Обновляем каноническую ноду
+            await s.run("""
+                   MATCH (c:Instance {instance_id: $canonical_id})
+                   SET c.name = $canonical_name,
+                       c.aliases = $aliases
+               """, {
+                "canonical_id": canonical_id,
+                "canonical_name": canonical_name,
+                "aliases": aliases,
+            })
+
+            # 5. Удаляем alias-ноды
+            await s.run("""
+                   UNWIND $alias_ids AS aid
+                   MATCH (alias:Instance {instance_id: aid})
+                   DETACH DELETE alias
+               """, {"alias_ids": alias_ids})
+
+        logger.info(
+            f"🔗 Merged {len(alias_ids)} aliases → "
+            f"«{canonical_name}» ({canonical_id[:8]}…)"
+        )
+
+    async def get_all_instances(self) -> List[InstanceNode]:
+        data = await self._fetch_all("""
+               MATCH (i:Instance)
+               RETURN i.instance_id AS instance_id,
+                      i.name        AS name,
+                      i.class_name  AS class_name,
+                      i.chunk_id    AS chunk_id,
+                      i.aliases     AS aliases,
+                      i.embedding   AS embedding
+           """)
+        return [map_to_instance(r) for r in data]
