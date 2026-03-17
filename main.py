@@ -1,10 +1,10 @@
 """
 Единая точка входа CLI.
 
-Примеры:
     python main.py ingest  data/my_doc.pdf
     python main.py seed-tbox
     python main.py seed-tbox --force --show
+    python main.py doc-info my_doc.pdf
 """
 
 import sys
@@ -35,10 +35,7 @@ app = typer.Typer(
 @app.command("ingest")
 def ingest_cmd(
     file: Path = typer.Argument(
-        ...,
-        help="Путь к PDF-файлу",
-        exists=True,
-        readable=True,
+        ..., help="Путь к PDF-файлу", exists=True, readable=True,
     ),
 ):
     """Индексация PDF-документа в графовую БД"""
@@ -70,14 +67,8 @@ async def _run_ingest(file_path: Path):
 
 @app.command("seed-tbox")
 def seed_tbox_cmd(
-    force: bool = typer.Option(
-        False, "--force", "-f",
-        help="Перезаписать описания существующих CORE-элементов",
-    ),
-    show: bool = typer.Option(
-        False, "--show", "-s",
-        help="Показать T-Box после сидирования",
-    ),
+    force: bool = typer.Option(False, "--force", "-f"),
+    show: bool = typer.Option(False, "--show", "-s"),
 ):
     """Инициализация базовой онтологии (T-Box) в Neo4j"""
     console.print("[bold cyan]📚 Инициализация T-Box…[/bold cyan]")
@@ -87,7 +78,9 @@ def seed_tbox_cmd(
 async def _run_seed(force: bool, show: bool):
     from src.di.container import setup_di
     from src.application.use_cases.seed_tbox import SeedTboxUseCase
-    from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+    from src.domain.interfaces.repositories.schema_repository import (
+        ISchemaRepository,
+    )
 
     container = setup_di()
     try:
@@ -105,15 +98,14 @@ async def _run_seed(force: bool, show: bool):
             )
 
         if show:
-            repo = await container.get(IGraphRepository)
+            schema_repo = await container.get(ISchemaRepository)
 
-            # --- Классы ---
-            classes = await repo.get_tbox_classes()
+            classes = await schema_repo.get_tbox_classes()
             console.print(
                 f"\n[bold cyan]Классы ({len(classes)}):[/bold cyan]"
             )
             for cls in sorted(
-                classes, key=lambda c: (c.status.value, c.name)
+                classes, key=lambda c: (c.status.value, c.name),
             ):
                 icon = "🟢" if cls.status.value == "core" else "🟡"
                 desc = f" — {cls.description}" if cls.description else ""
@@ -123,14 +115,15 @@ async def _run_seed(force: bool, show: bool):
                     f"[{cls.status.value}]"
                 )
 
-            # --- Отношения ---
-            relations = await repo.get_schema_relations()
+            relations = await schema_repo.get_schema_relations()
             console.print(
                 f"\n[bold cyan]Отношения ({len(relations)}):[/bold cyan]"
             )
             for rel in sorted(
                 relations,
-                key=lambda r: (r.status.value, r.source_class, r.relation_name),
+                key=lambda r: (
+                    r.status.value, r.source_class, r.relation_name,
+                ),
             ):
                 icon = "🟢" if rel.status.value == "core" else "🟡"
                 desc = f" — {rel.description}" if rel.description else ""
@@ -142,70 +135,72 @@ async def _run_seed(force: bool, show: bool):
     finally:
         await container.close()
 
+
+# ======================== DOC-INFO ========================
+
 @app.command("doc-info")
 def doc_info_cmd(
-    filename: str = typer.Argument(
-        ...,
-        help="Имя файла документа (filename)",
-    ),
+    filename: str = typer.Argument(..., help="Имя файла документа"),
 ):
     """Показать информацию о документе: текст чанков, сущности, триплеты"""
-    console.print(f"[bold cyan]📄 Информация о документе:[/bold cyan] {filename}")
+    console.print(
+        f"[bold cyan]📄 Информация о документе:[/bold cyan] {filename}"
+    )
     asyncio.run(_run_doc_info(filename))
 
 
 async def _run_doc_info(filename: str):
     from src.di.container import setup_di
-    from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+    from src.domain.interfaces.repositories.document_repository import (
+        IDocumentRepository,
+    )
+    from src.domain.interfaces.repositories.instance_repository import (
+        IInstanceRepository,
+    )
 
     container = setup_di()
     try:
-        repo = await container.get(IGraphRepository)
+        doc_repo = await container.get(IDocumentRepository)
+        instance_repo = await container.get(IInstanceRepository)
 
-        # 1. Получить документ по имени
-        docs = await repo.get_document_by_filename(filename)
+        docs = await doc_repo.get_document_by_filename(filename)
         if not docs:
-            console.print(f"[red]❌ Документ с именем '{filename}' не найден[/red]")
+            console.print(
+                f"[red]❌ Документ '{filename}' не найден[/red]"
+            )
             return
 
-        if len(docs) > 1:
-            console.print(
-                f"[yellow]⚠ Найдено несколько документов с именем '{filename}'. "
-                "Показываем первый.[/yellow]"
-            )
         doc = docs[0]
+        console.print(f"ID: [cyan]{doc.doc_id}[/cyan]")
+        console.print(f"Дата: {doc.upload_date}\n")
 
-        console.print(f"ID документа: [cyan]{doc.doc_id}[/cyan]")
-        console.print(f"Дата загрузки: {doc.upload_date}\n")
-
-        # 2. Получить чанки
-        chunks = await repo.get_chunks_by_document(doc.doc_id)
+        chunks = await doc_repo.get_chunks_by_document(doc.doc_id)
         if not chunks:
             console.print("[yellow]У документа нет чанков[/yellow]")
             return
 
         for chunk in chunks:
-            # Заголовок чанка
             console.rule(
                 f"[bold]Чанк {chunk.chunk_index} "
                 f"(стр. {chunk.start_page}-{chunk.end_page})[/bold]"
             )
-
-            # Текст чанка
             console.print("\n[bold]📝 Текст:[/bold]")
             console.print(chunk.text, soft_wrap=True)
 
-            # Сущности
-            instances = await repo.get_instances_by_chunk(chunk.chunk_id)
+            instances = await instance_repo.get_instances_by_chunk(
+                chunk.chunk_id,
+            )
             if instances:
                 console.print("\n[bold]🧩 Сущности:[/bold]")
                 for inst in instances:
-                    console.print(f"  • [green]{inst.name}[/green] ([cyan]{inst.class_name}[/cyan])")
-            else:
-                console.print("\n[dim]Нет сущностей[/dim]")
+                    console.print(
+                        f"  • [green]{inst.name}[/green] "
+                        f"([cyan]{inst.class_name}[/cyan])"
+                    )
 
-            # Триплеты
-            triples = await repo.get_triples_by_chunk(chunk.chunk_id)
+            triples = await instance_repo.get_triples_by_chunk(
+                chunk.chunk_id,
+            )
             if triples:
                 console.print("\n[bold]🔗 Триплеты:[/bold]")
                 for t in triples:
@@ -216,10 +211,8 @@ async def _run_doc_info(filename: str):
                         f"[green]{t['object_name']}[/green] "
                         f"([cyan]{t['object_type']}[/cyan])"
                     )
-            else:
-                console.print("\n[dim]Нет триплетов[/dim]")
 
-            console.print()  # пустая строка между чанками
+            console.print()
 
     except Exception as e:
         console.print(f"[bold red]✖ Ошибка:[/bold red] {e}")
@@ -227,7 +220,6 @@ async def _run_doc_info(filename: str):
     finally:
         await container.close()
 
-# ==============================================================
 
 if __name__ == "__main__":
     app()

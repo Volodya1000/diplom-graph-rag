@@ -1,17 +1,22 @@
 """
 Use Case: Полная индексация PDF → граф знаний.
+
+Зависимости разделены по ISP — каждый репозиторий отвечает
+за свою область ответственности.
 """
 
 import logging
 from pathlib import Path
 
-from domain.interfaces.llm.llm_client import ExtractionResult
-from domain.graph_components.nodes import DocumentNode, ChunkNode
+from src.domain.interfaces.llm.llm_client import ILLMClient, ExtractionResult
+from src.domain.graph_components.nodes import DocumentNode, ChunkNode
 from src.domain.agregates.instance_agregate import InstanceAggregate
 from src.domain.agregates.document_agregate import DocumentAggregate
-from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
+from src.domain.interfaces.repositories.document_repository import IDocumentRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
-from src.domain.interfaces.llm.llm_client import ILLMClient
 from src.infrastructure.docling.doc_processor import DocProcessor
 from src.application.services.entity_resolution_service import (
     EntityResolutionOrchestrator,
@@ -24,23 +29,30 @@ class IngestDocumentUseCase:
     def __init__(
         self,
         parser: DocProcessor,
-        repo: IGraphRepository,
+        schema_repo: ISchemaRepository,
+        doc_repo: IDocumentRepository,
+        instance_repo: IInstanceRepository,
+        edge_repo: IEdgeRepository,
         embedder: IEmbeddingService,
         llm: ILLMClient,
         er_svc: EntityResolutionOrchestrator,
     ):
         self.parser = parser
-        self.repo = repo
+        self.schema_repo = schema_repo
+        self.doc_repo = doc_repo
+        self.instance_repo = instance_repo
+        self.edge_repo = edge_repo
         self.embedder = embedder
         self.llm = llm
         self.er_svc = er_svc
 
     # ------------------------------------------------------------------
-    async def _ensure_tbox(self) -> None:
-        await self.repo.ensure_indexes()
 
-        current_classes = await self.repo.get_tbox_classes()
-        current_relations = await self.repo.get_schema_relations()
+    async def _ensure_tbox(self) -> None:
+        await self.schema_repo.ensure_indexes()
+
+        current_classes = await self.schema_repo.get_tbox_classes()
+        current_relations = await self.schema_repo.get_schema_relations()
 
         if current_classes:
             logger.info(
@@ -53,17 +65,14 @@ class IngestDocumentUseCase:
         from src.domain.ontology.base_tbox import (
             BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS,
         )
-        await self.repo.save_tbox_classes(BASE_TBOX_CLASSES)
-        await self.repo.save_schema_relations(BASE_TBOX_RELATIONS)
-        logger.info(
-            f"📚 T-Box создан: {len(BASE_TBOX_CLASSES)} классов, "
-            f"{len(BASE_TBOX_RELATIONS)} отношений"
-        )
+        await self.schema_repo.save_tbox_classes(BASE_TBOX_CLASSES)
+        await self.schema_repo.save_schema_relations(BASE_TBOX_RELATIONS)
+        logger.info("📚 T-Box создан")
 
     # ------------------------------------------------------------------
+
     async def execute(self, file_path: Path) -> str:
         logger.info(f"📄 Start ingest: {file_path}")
-
         await self._ensure_tbox()
 
         doc = DocumentNode(filename=file_path.name)
@@ -88,20 +97,21 @@ class IngestDocumentUseCase:
         ]
 
         # === EMBEDDINGS ===
-        chunk_texts = [c.text for c in domain_chunks]
-        embeddings = await self.embedder.embed_texts_batch(chunk_texts)
+        embeddings = await self.embedder.embed_texts_batch(
+            [c.text for c in domain_chunks],
+        )
         for i, chunk in enumerate(domain_chunks):
             chunk.embedding = embeddings[i]
         logger.info(f"🧠 Embeddings: {len(embeddings)}")
 
         # === SAVE DOC + CHUNKS ===
-        await self.repo.save_document(doc)
+        await self.doc_repo.save_document(doc)
         for chunk in domain_chunks:
-            await self.repo.save_chunk(chunk)
-        logger.info(f"💾 Документ + {len(domain_chunks)} чанков сохранены")
+            await self.doc_repo.save_chunk(chunk)
 
         doc_agg = DocumentAggregate(document=doc, chunks=domain_chunks)
-        await self.repo.save_edges(doc_agg.build_edges())
+        await self.edge_repo.save_edges(doc_agg.build_edges())
+        logger.info(f"💾 Документ + {len(domain_chunks)} чанков сохранены")
 
         # === ENTITY + TRIPLE PIPELINE ===
         registry = self.er_svc.create_registry()
@@ -116,19 +126,15 @@ class IngestDocumentUseCase:
                 f"({len(chunk.text)} символов)"
             )
 
-            current_classes = await self.repo.get_tbox_classes()
-            current_relations = await self.repo.get_schema_relations()
+            current_classes = await self.schema_repo.get_tbox_classes()
+            current_relations = await self.schema_repo.get_schema_relations()
 
-            # ---- Контекст известных сущностей ----
-            known_entities_str = registry.format_known_entities()
-
-            # ---- LLM ----
             extraction: ExtractionResult = (
                 await self.llm.extract_entities_and_triples(
                     text=chunk.text,
                     tbox_classes=current_classes,
                     tbox_relations=current_relations,
-                    known_entities=known_entities_str,
+                    known_entities=registry.format_known_entities(),
                 )
             )
             logger.info(
@@ -139,12 +145,8 @@ class IngestDocumentUseCase:
             if not extraction.entities and not extraction.triples:
                 continue
 
-            # ---- Entity Resolution ----
             (
-                instances,
-                new_classes,
-                resolved_triples,
-                new_relations,
+                instances, new_classes, resolved_triples, new_relations,
             ) = await self.er_svc.process_extraction(
                 extraction,
                 current_classes,
@@ -160,21 +162,20 @@ class IngestDocumentUseCase:
                 f"new_rels={len(new_relations)}"
             )
 
-            # ---- Сохранение ----
             if new_classes:
-                await self.repo.save_tbox_classes(new_classes)
+                await self.schema_repo.save_tbox_classes(new_classes)
             if new_relations:
-                await self.repo.save_schema_relations(new_relations)
+                await self.schema_repo.save_schema_relations(new_relations)
 
             for inst in instances:
                 if inst.instance_id not in saved_instance_ids:
-                    await self.repo.save_instance(inst)
+                    await self.instance_repo.save_instance(inst)
                     inst_agg = InstanceAggregate(instance=inst)
-                    await self.repo.save_edges(inst_agg.build_edges())
+                    await self.edge_repo.save_edges(inst_agg.build_edges())
                     saved_instance_ids.add(inst.instance_id)
 
             for triple in resolved_triples:
-                await self.repo.save_instance_relation(triple)
+                await self.instance_repo.save_instance_relation(triple)
 
             total_entities += len(instances)
             total_triples += len(resolved_triples)
@@ -183,6 +184,6 @@ class IngestDocumentUseCase:
             f"✅ Ingest завершён: "
             f"entities={total_entities}, "
             f"triples={total_triples}, "
-            f"unique_nodes={len(saved_instance_ids)}"
+            f"unique={len(saved_instance_ids)}"
         )
         return doc.doc_id

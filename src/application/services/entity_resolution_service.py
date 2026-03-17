@@ -1,6 +1,7 @@
 """
-Оркестратор Entity Resolution с кросс-чанковым реестром,
-контекстом известных сущностей и валидацией троек.
+Оркестратор Entity Resolution.
+
+Изменение: зависит от IInstanceRepository вместо IGraphRepository (ISP).
 """
 
 import uuid
@@ -9,29 +10,24 @@ from typing import Dict, List, Optional, Tuple
 
 import Levenshtein as Lev
 
-from domain.utils.normalize_predicate import normalize_predicate
-from application.dtos.extraction_dtos import RawExtractedEntity, ResolvedTriple
-from domain.interfaces.llm.llm_client import ExtractionResult
-from domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
-from domain.graph_components.nodes import InstanceNode
+from src.domain.utils.normalize_predicate import normalize_predicate
+from src.application.dtos.extraction_dtos import RawExtractedEntity, ResolvedTriple
+from src.domain.interfaces.llm.llm_client import ExtractionResult
+from src.domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
+from src.domain.graph_components.nodes import InstanceNode
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.ontology.schema_validator import SchemaValidator
-from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 
 logger = logging.getLogger(__name__)
 
 
 # =====================================================================
-#  Кросс-чанковый реестр
+#  Кросс-чанковый реестр (без изменений)
 # =====================================================================
 
 class EntityRegistry:
-    """
-    Локальный кеш сущностей для одного документа.
-    Дедупликация + фиксация типа (первый чанк побеждает).
-    """
-
     def __init__(self, levenshtein_threshold: float = 0.85):
         self._by_name: Dict[str, InstanceNode] = {}
         self._threshold = levenshtein_threshold
@@ -41,8 +37,7 @@ class EntityRegistry:
         if key in self._by_name:
             return self._by_name[key]
         for existing_key, inst in self._by_name.items():
-            sim = self._similarity(key, existing_key)
-            if sim >= self._threshold:
+            if self._similarity(key, existing_key) >= self._threshold:
                 return inst
         return None
 
@@ -55,19 +50,16 @@ class EntityRegistry:
     def _similarity(a: str, b: str) -> float:
         if not a or not b:
             return 0.0
-        dist = Lev.distance(a, b)
-        return 1.0 - dist / max(len(a), len(b))
+        return 1.0 - Lev.distance(a, b) / max(len(a), len(b))
 
     @property
     def all_instances(self) -> List[InstanceNode]:
         return list(self._by_name.values())
 
     def format_known_entities(self) -> str:
-        """Форматирует известные сущности для контекста LLM."""
         if not self._by_name:
             return ""
-        lines = []
-        seen = set()
+        lines, seen = [], set()
         for inst in self._by_name.values():
             key = (inst.name, inst.class_name)
             if key not in seen:
@@ -83,11 +75,11 @@ class EntityRegistry:
 class EntityResolutionOrchestrator:
     def __init__(
         self,
-        repo: IGraphRepository,
+        instance_repo: IInstanceRepository,       # ← ISP: только то, что нужно
         embedder: IEmbeddingService,
         matcher: EntityResolutionMatcher,
     ):
-        self.repo = repo
+        self.instance_repo = instance_repo
         self.embedder = embedder
         self.matcher = matcher
 
@@ -95,8 +87,6 @@ class EntityResolutionOrchestrator:
         return EntityRegistry(
             levenshtein_threshold=self.matcher.levenshtein_threshold,
         )
-
-    # ------------------------------------------------------------------
 
     async def process_extraction(
         self,
@@ -114,7 +104,6 @@ class EntityResolutionOrchestrator:
         instances: List[InstanceNode] = []
         new_classes: List[SchemaClass] = []
         tbox_names = {c.name.lower() for c in current_classes}
-
         chunk_name_map: Dict[str, InstanceNode] = {}
 
         # ---- 1. Сущности ----
@@ -123,28 +112,22 @@ class EntityResolutionOrchestrator:
             name_clean = raw.name.strip()
             name_lower = name_clean.lower()
 
-            # 1a. Реестр (кросс-чанк)
             existing = registry.find(name_clean)
             if existing:
-                logger.debug(
-                    f"♻️ Реестр: «{name_clean}» → "
-                    f"{existing.instance_id[:8]}… [{existing.class_name}]"
-                )
                 chunk_name_map[name_lower] = existing
                 instances.append(existing)
                 continue
 
-            # 1b. Новый тип
             if type_clean.lower() not in tbox_names:
-                new_cls = SchemaClass(
-                    name=type_clean, status=SchemaStatus.DRAFT,
+                new_classes.append(
+                    SchemaClass(name=type_clean, status=SchemaStatus.DRAFT)
                 )
-                new_classes.append(new_cls)
                 tbox_names.add(type_clean.lower())
 
-            # 1c. Эмбеддинг + vector search
             embedding = await self.embedder.embed_text(name_clean)
-            candidates = await self.repo.find_candidates_by_vector(embedding)
+            candidates = await self.instance_repo.find_candidates_by_vector(
+                embedding,
+            )
 
             match_id = self.matcher.find_best_match(
                 RawExtractedEntity(name=name_clean, type=type_clean),
@@ -156,26 +139,13 @@ class EntityResolutionOrchestrator:
                     (c for c in candidates if c.instance_id == match_id),
                     None,
                 )
-                if matched:
-                    logger.info(
-                        f"🔗 DB match: «{name_clean}» → "
-                        f"«{matched.name}» [{matched.class_name}]"
-                    )
-                    inst = InstanceNode(
-                        instance_id=match_id,
-                        name=matched.name,
-                        class_name=matched.class_name,
-                        chunk_id=chunk_id,
-                        embedding=embedding,
-                    )
-                else:
-                    inst = InstanceNode(
-                        instance_id=match_id,
-                        name=name_clean,
-                        class_name=type_clean,
-                        chunk_id=chunk_id,
-                        embedding=embedding,
-                    )
+                inst = InstanceNode(
+                    instance_id=match_id,
+                    name=matched.name if matched else name_clean,
+                    class_name=matched.class_name if matched else type_clean,
+                    chunk_id=chunk_id,
+                    embedding=embedding,
+                )
             else:
                 inst = InstanceNode(
                     instance_id=str(uuid.uuid4()),
@@ -183,10 +153,6 @@ class EntityResolutionOrchestrator:
                     class_name=type_clean,
                     chunk_id=chunk_id,
                     embedding=embedding,
-                )
-                logger.info(
-                    f"🆕 Новая: «{name_clean}» [{type_clean}] "
-                    f"id={inst.instance_id[:8]}…"
                 )
 
             registry.register(name_clean, inst)
@@ -205,25 +171,17 @@ class EntityResolutionOrchestrator:
 
         for triple in extraction.triples:
             predicate = normalize_predicate(triple.predicate)
-
             src_inst = self._find_instance(triple.subject, chunk_name_map)
             tgt_inst = self._find_instance(triple.object, chunk_name_map)
 
             if not src_inst or not tgt_inst:
-                logger.debug(
-                    f"⏭️ Пропуск: «{triple.subject}» "
-                    f"-[{predicate}]→ «{triple.object}»"
-                )
                 continue
-
             if src_inst.instance_id == tgt_inst.instance_id:
                 continue
 
-            allowed = validator.is_relation_allowed(
+            if not validator.is_relation_allowed(
                 src_inst.class_name, predicate, tgt_inst.class_name,
-            )
-
-            if not allowed:
+            ):
                 rel_key = (
                     src_inst.class_name.lower(),
                     predicate,
@@ -239,10 +197,6 @@ class EntityResolutionOrchestrator:
                     new_relations.append(new_rel)
                     all_relations.append(new_rel)
                     seen_rel_keys.add(rel_key)
-                    logger.info(
-                        f"📝 DRAFT: {src_inst.class_name} →"
-                        f"{predicate}→ {tgt_inst.class_name}"
-                    )
 
             resolved_triples.append(
                 ResolvedTriple(
@@ -255,8 +209,6 @@ class EntityResolutionOrchestrator:
 
         return instances, new_classes, resolved_triples, new_relations
 
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _find_instance(
         entity_name: str,
@@ -268,8 +220,7 @@ class EntityResolutionOrchestrator:
         for k, inst in name_map.items():
             if not k or not key:
                 continue
-            dist = Lev.distance(key, k)
-            sim = 1.0 - dist / max(len(key), len(k))
+            sim = 1.0 - Lev.distance(key, k) / max(len(key), len(k))
             if sim >= 0.85:
                 return inst
         return None

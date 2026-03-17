@@ -1,71 +1,61 @@
 """
 Use Case: Инициализация базового T-Box + индексов.
+
+Зависит только от ISchemaRepository (SRP + ISP).
 """
 
 import logging
 
 from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS
-from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 
 logger = logging.getLogger(__name__)
 
 
 class SeedTboxUseCase:
-    def __init__(self, repo: IGraphRepository):
-        self.repo = repo
+    def __init__(self, schema_repo: ISchemaRepository):
+        self.schema_repo = schema_repo
 
     async def execute(self, force: bool = False) -> int:
-        # ---- Индексы ----
-        await self.repo.ensure_indexes()
+        await self.schema_repo.ensure_indexes()
 
         # ---- Классы ----
-        current_classes = await self.repo.get_tbox_classes()
+        current_classes = await self.schema_repo.get_tbox_classes()
         existing_names = {c.name.lower() for c in current_classes}
 
-        if force:
-            classes_to_save = list(BASE_TBOX_CLASSES)
-        else:
-            classes_to_save = [
-                c for c in BASE_TBOX_CLASSES
-                if c.name.lower() not in existing_names
-            ]
-
+        classes_to_save = (
+            list(BASE_TBOX_CLASSES)
+            if force
+            else [c for c in BASE_TBOX_CLASSES
+                  if c.name.lower() not in existing_names]
+        )
         if classes_to_save:
-            await self.repo.save_tbox_classes(classes_to_save)
-            for cls in classes_to_save:
-                p = f" (→ {cls.parent})" if cls.parent else ""
-                logger.info(f"  📌 {cls.name}{p}: {cls.description}")
+            await self.schema_repo.save_tbox_classes(classes_to_save)
 
         # ---- Отношения ----
-        current_rels = await self.repo.get_schema_relations()
-        existing_rel_keys = {
-            (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
+        current_rels = await self.schema_repo.get_schema_relations()
+        existing_keys = {
+            (r.source_class.lower(),
+             r.relation_name.upper(),
+             r.target_class.lower())
             for r in current_rels
         }
 
-        if force:
-            rels_to_save = list(BASE_TBOX_RELATIONS)
-        else:
-            rels_to_save = [
-                r for r in BASE_TBOX_RELATIONS
-                if (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
-                not in existing_rel_keys
-            ]
-
+        rels_to_save = (
+            list(BASE_TBOX_RELATIONS)
+            if force
+            else [r for r in BASE_TBOX_RELATIONS
+                  if (r.source_class.lower(),
+                      r.relation_name.upper(),
+                      r.target_class.lower()) not in existing_keys]
+        )
         if rels_to_save:
-            await self.repo.save_schema_relations(rels_to_save)
-            for rel in rels_to_save:
-                logger.info(
-                    f"  🔗 {rel.source_class} → {rel.relation_name} → "
-                    f"{rel.target_class}"
-                )
+            await self.schema_repo.save_schema_relations(rels_to_save)
 
         total = len(classes_to_save) + len(rels_to_save)
-        if total == 0:
-            logger.info("✅ T-Box уже содержит все базовые элементы")
-        else:
-            logger.info(
-                f"✅ T-Box: {len(classes_to_save)} классов + "
-                f"{len(rels_to_save)} отношений"
-            )
+        logger.info(
+            f"✅ T-Box: {len(classes_to_save)} классов + "
+            f"{len(rels_to_save)} отношений"
+            if total else "✅ T-Box уже содержит все базовые элементы"
+        )
         return total
