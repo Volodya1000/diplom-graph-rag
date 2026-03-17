@@ -19,3 +19,8 @@ dependencies = [
     "transformers>=4.57.6",
     "typer>=0.21.2",
 ]
+
+[dependency-groups]
+dev = [
+    "git-filter-repo>=2.47.0",
+]
