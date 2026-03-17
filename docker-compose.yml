@@ -1,0 +1,36 @@
+services:
+  neo4j:
+    image: neo4j:2025.12.1-community
+    container_name: neo4j
+    restart: unless-stopped
+
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+
+    env_file:
+      - .env
+
+    environment:
+      - NEO4J_AUTH=${DB_USER}/${DB_PASSWORD}
+      - NEO4J_server_default__listen__address=0.0.0.0
+      - NEO4J_server_default__advertised__address=${HOST_IP}
+      - NEO4J_PLUGINS=["apoc","graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./import:/import
+      - ./plugins:/plugins
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

@@ -1,0 +1,21 @@
+[project]
+name = "gr-a3"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dishka>=1.9.1",
+    "docling>=2.80.0",
+    "easyocr>=1.7.2",
+    "neo4j>=6.1.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "python-dotenv>=1.2.2",
+    "python-levenshtein>=0.27.3",
+    "rich>=14.3.3",
+    "sentence-transformers>=5.3.0",
+    "tenacity>=9.1.4",
+    "transformers>=4.57.6",
+    "typer>=0.21.2",
+]

@@ -1,0 +1,99 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Виртуальные окружения
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# uv / poetry / pdm / hatch специфичные файлы
+.uv/
+.poetry/
+.pdm-python/
+.pdm-build/
+__pypackages__/
+
+# IDE и редакторы
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+*.ipynb
+
+# Логи и временные файлы
+*.log
+*.logs/
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Данные и большие файлы (очень важно для ML/RAG проектов)
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.onnx_data/
+*.onnx.*
+data/
+datasets/
+models/
+checkpoints/
+cache/
+chroma/
+vectorstore/
+faiss_index/
+*.faiss
+*.annoy
+*.hnswlib
+
+# Кэши
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+.coverage.*
+tox/
+.nox/
+
+# Документация (если генерируется)
+docs/_build/
+site/
+
+# Другое
+*.bak
+*.backup
+*.orig
+*.rej
+*.pyc
+
+
+.data/
