@@ -15,7 +15,6 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-# Корень проекта в sys.path (на случай запуска из другой директории)
 root = Path(__file__).resolve().parent
 sys.path.insert(0, str(root))
 
@@ -53,10 +52,13 @@ async def _run_ingest(file_path: Path):
 
     container = setup_di()
     try:
-        console.print("[dim]Сборка зависимостей и загрузка моделей...[/dim]")
+        console.print("[dim]Сборка зависимостей и загрузка моделей…[/dim]")
         use_case = await container.get(IngestDocumentUseCase)
         doc_id = await use_case.execute(file_path)
-        console.print(f"[bold green]✔ Успех![/bold green] doc_id: [cyan]{doc_id}[/cyan]")
+        console.print(
+            f"[bold green]✔ Успех![/bold green] "
+            f"doc_id: [cyan]{doc_id}[/cyan]"
+        )
     except Exception as e:
         console.print(f"[bold red]✖ Ошибка:[/bold red] {e}")
         logging.getLogger(__name__).exception("Детали:")
@@ -70,7 +72,7 @@ async def _run_ingest(file_path: Path):
 def seed_tbox_cmd(
     force: bool = typer.Option(
         False, "--force", "-f",
-        help="Перезаписать описания существующих CORE-классов",
+        help="Перезаписать описания существующих CORE-элементов",
     ),
     show: bool = typer.Option(
         False, "--show", "-s",
@@ -78,7 +80,7 @@ def seed_tbox_cmd(
     ),
 ):
     """Инициализация базовой онтологии (T-Box) в Neo4j"""
-    console.print("[bold cyan]📚 Инициализация T-Box...[/bold cyan]")
+    console.print("[bold cyan]📚 Инициализация T-Box…[/bold cyan]")
     asyncio.run(_run_seed(force, show))
 
 
@@ -93,21 +95,137 @@ async def _run_seed(force: bool, show: bool):
         count = await use_case.execute(force=force)
 
         if count > 0:
-            console.print(f"[bold green]✔ Добавлено/обновлено: {count} классов[/bold green]")
+            console.print(
+                f"[bold green]✔ Добавлено/обновлено: "
+                f"{count} элементов[/bold green]"
+            )
         else:
-            console.print("[yellow]Все базовые классы уже существуют[/yellow]")
+            console.print(
+                "[yellow]Все базовые элементы уже существуют[/yellow]"
+            )
 
         if show:
             repo = await container.get(IGraphRepository)
+
+            # --- Классы ---
             classes = await repo.get_tbox_classes()
-            console.print(f"\n[bold cyan]T-Box ({len(classes)} классов):[/bold cyan]")
-            for cls in sorted(classes, key=lambda c: (c.status.value, c.name)):
+            console.print(
+                f"\n[bold cyan]Классы ({len(classes)}):[/bold cyan]"
+            )
+            for cls in sorted(
+                classes, key=lambda c: (c.status.value, c.name)
+            ):
                 icon = "🟢" if cls.status.value == "core" else "🟡"
                 desc = f" — {cls.description}" if cls.description else ""
-                console.print(f"  {icon} {cls.name}{desc}  [{cls.status.value}]")
+                parent = f" (↑ {cls.parent})" if cls.parent else ""
+                console.print(
+                    f"  {icon} {cls.name}{parent}{desc}  "
+                    f"[{cls.status.value}]"
+                )
+
+            # --- Отношения ---
+            relations = await repo.get_schema_relations()
+            console.print(
+                f"\n[bold cyan]Отношения ({len(relations)}):[/bold cyan]"
+            )
+            for rel in sorted(
+                relations,
+                key=lambda r: (r.status.value, r.source_class, r.relation_name),
+            ):
+                icon = "🟢" if rel.status.value == "core" else "🟡"
+                desc = f" — {rel.description}" if rel.description else ""
+                console.print(
+                    f"  {icon} {rel.source_class} → "
+                    f"{rel.relation_name} → {rel.target_class}"
+                    f"{desc}  [{rel.status.value}]"
+                )
     finally:
         await container.close()
 
+@app.command("doc-info")
+def doc_info_cmd(
+    filename: str = typer.Argument(
+        ...,
+        help="Имя файла документа (filename)",
+    ),
+):
+    """Показать информацию о документе: текст чанков, сущности, триплеты"""
+    console.print(f"[bold cyan]📄 Информация о документе:[/bold cyan] {filename}")
+    asyncio.run(_run_doc_info(filename))
+
+
+async def _run_doc_info(filename: str):
+    from src.di.container import setup_di
+    from src.domain.interfaces.repositories.graph_repository import IGraphRepository
+
+    container = setup_di()
+    try:
+        repo = await container.get(IGraphRepository)
+
+        # 1. Получить документ по имени
+        docs = await repo.get_document_by_filename(filename)
+        if not docs:
+            console.print(f"[red]❌ Документ с именем '{filename}' не найден[/red]")
+            return
+
+        if len(docs) > 1:
+            console.print(
+                f"[yellow]⚠ Найдено несколько документов с именем '{filename}'. "
+                "Показываем первый.[/yellow]"
+            )
+        doc = docs[0]
+
+        console.print(f"ID документа: [cyan]{doc.doc_id}[/cyan]")
+        console.print(f"Дата загрузки: {doc.upload_date}\n")
+
+        # 2. Получить чанки
+        chunks = await repo.get_chunks_by_document(doc.doc_id)
+        if not chunks:
+            console.print("[yellow]У документа нет чанков[/yellow]")
+            return
+
+        for chunk in chunks:
+            # Заголовок чанка
+            console.rule(
+                f"[bold]Чанк {chunk.chunk_index} "
+                f"(стр. {chunk.start_page}-{chunk.end_page})[/bold]"
+            )
+
+            # Текст чанка
+            console.print("\n[bold]📝 Текст:[/bold]")
+            console.print(chunk.text, soft_wrap=True)
+
+            # Сущности
+            instances = await repo.get_instances_by_chunk(chunk.chunk_id)
+            if instances:
+                console.print("\n[bold]🧩 Сущности:[/bold]")
+                for inst in instances:
+                    console.print(f"  • [green]{inst.name}[/green] ([cyan]{inst.class_name}[/cyan])")
+            else:
+                console.print("\n[dim]Нет сущностей[/dim]")
+
+            # Триплеты
+            triples = await repo.get_triples_by_chunk(chunk.chunk_id)
+            if triples:
+                console.print("\n[bold]🔗 Триплеты:[/bold]")
+                for t in triples:
+                    console.print(
+                        f"  • [green]{t['subject_name']}[/green] "
+                        f"([cyan]{t['subject_type']}[/cyan]) "
+                        f"—[yellow]{t['predicate']}[/yellow]→ "
+                        f"[green]{t['object_name']}[/green] "
+                        f"([cyan]{t['object_type']}[/cyan])"
+                    )
+            else:
+                console.print("\n[dim]Нет триплетов[/dim]")
+
+            console.print()  # пустая строка между чанками
+
+    except Exception as e:
+        console.print(f"[bold red]✖ Ошибка:[/bold red] {e}")
+        logging.getLogger(__name__).exception("Детали:")
+    finally:
+        await container.close()
 
 # ==============================================================
 

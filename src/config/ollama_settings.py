@@ -7,10 +7,11 @@ class OllamaSettings(BaseModel):
     """
     Настройки модели Ollama с переключателем Cloud/Local.
     """
-    model_name: str = Field(default="qwen3.5:9b", description="Название модели")
+    #model_name: str = Field(default="qwen3.5:9b", description="Название модели")
+    model_name: str = Field(default="gpt-oss:120b-cloud", description="Название модели")
     temperature: float = Field(default=0.4, ge=0.0, le=1.0)
     num_ctx: int = Field(default=4096, ge=1024)
-    is_cloud: bool = Field(default=False)
+    is_cloud: bool = Field(default=True)
 
     # API ключ (читается один раз из .env)
     api_key: Optional[str] = Field(

@@ -1,10 +1,13 @@
-import re
-from re import Pattern
+"""
+LLM-клиент на базе Ollama: извлечение сущностей + троек.
+"""
 
+import re
 import logging
+from re import Pattern
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
@@ -12,37 +15,57 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import AIMessage
 
 from src.domain.interfaces.llm.llm_client import ILLMClient
-from src.domain.models import SchemaClass, RawExtractedEntity
+from src.domain.models import (
+    SchemaClass, SchemaRelation,
+    ExtractionResult, RawExtractedEntity, RawExtractedTriple,
+)
+from src.domain.ontology.schema_validator import SchemaValidator
 from src.config.ollama_settings import OllamaSettings
-from src.infrastructure.llm.prompts.entity_extraction import get_entity_extraction_prompt
+from src.infrastructure.llm.prompts.entity_extraction import (
+    get_entity_extraction_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
 
-# --- Внутренние DTO для парсера ---
+# ---- Внутренние DTO для PydanticOutputParser ----
 
 class _ParsedEntity(BaseModel):
     name: str
     type: str
 
 
-class _ExtractedEntities(BaseModel):
-    entities: List[_ParsedEntity]
+class _ParsedTriple(BaseModel):
+    subject: str
+    predicate: str
+    object: str
 
 
-# --- Утилита очистки вывода LLM ---
+class _ExtractionOutput(BaseModel):
+    entities: List[_ParsedEntity] = Field(default_factory=list)
+    triples: List[_ParsedTriple] = Field(default_factory=list)
+
+
+# ---- Утилита очистки вывода LLM ----
 
 _RE_THINK: Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
-_RE_CODE_BLOCK: Pattern[str] = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
+_RE_CODE_BLOCK: Pattern[str] = re.compile(
+    r"```(?:json)?\s*", re.IGNORECASE
+)
+
 
 def _clean_llm_output(message: AIMessage) -> str:
-    text = message.content if isinstance(message, AIMessage) else str(message)
-    text = _RE_THINK.sub("", text)        # type: ignore[arg-type]
-    text = _RE_CODE_BLOCK.sub("", text)   # type: ignore[arg-type]
+    text = (
+        message.content
+        if isinstance(message, AIMessage)
+        else str(message)
+    )
+    text = _RE_THINK.sub("", text)
+    text = _RE_CODE_BLOCK.sub("", text)
     text = text.strip()
     if not text:
-        logger.warning("⚠️ LLM вернула пустой ответ или только <think> теги.")
-        return '{"entities": []}'
+        logger.warning("⚠️ LLM вернула пустой ответ")
+        return '{"entities": [], "triples": []}'
     return text
 
 
@@ -67,62 +90,69 @@ class OllamaClient(ILLMClient):
             verbose=False,
         )
 
-    @staticmethod
-    def _format_tbox(tbox_schema: List[SchemaClass]) -> str:
-        if not tbox_schema:
-            return "(типы не заданы — определи подходящие типы самостоятельно)"
-        lines = []
-        for cls in tbox_schema:
-            desc = f" — {cls.description}" if cls.description else ""
-            lines.append(f"• {cls.name}{desc}")
-        return "\n".join(lines)
+    # ------------------------------------------------------------------
+    async def extract_entities_and_triples(
+        self,
+        text: str,
+        tbox_classes: List[SchemaClass],
+        tbox_relations: List[SchemaRelation],
+    ) -> ExtractionResult:
 
-    async def extract_entities(
-            self, text: str, tbox_schema: List[SchemaClass]
-    ) -> List[RawExtractedEntity]:
+        # Форматируем схему для промпта
+        validator = SchemaValidator(tbox_classes, tbox_relations)
+        classes_str = validator.format_hierarchy_tree()
+        relations_str = validator.format_relations()
 
-        tbox_str = self._format_tbox(tbox_schema)
+        logger.info(f"📨 LLM input: {len(text)} chars")
+        logger.debug(f"📨 Classes:\n{classes_str}")
+        logger.debug(f"📨 Relations:\n{relations_str}")
 
-        logger.info(f"📨 LLM input text size: {len(text)} chars")
-        logger.debug(f"📨 TBOX:\n{tbox_str}")
-
-        parser = PydanticOutputParser(pydantic_object=_ExtractedEntities)
+        parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
         prompt: ChatPromptTemplate = get_entity_extraction_prompt()
-
         prompt = prompt.partial(
-            format_instructions=parser.get_format_instructions()
+            format_instructions=parser.get_format_instructions(),
         )
 
         chain = (
-                prompt
-                | self.llm
-                | RunnableLambda(_clean_llm_output)
-                | parser
+            prompt
+            | self.llm
+            | RunnableLambda(_clean_llm_output)
+            | parser
         )
 
         try:
-            parsed: _ExtractedEntities = await chain.ainvoke({
-                "tbox_schema": tbox_str,
+            parsed: _ExtractionOutput = await chain.ainvoke({
+                "tbox_classes": classes_str,
+                "tbox_relations": relations_str,
                 "text": text,
             })
 
-            entities: List[RawExtractedEntity] = [
+            entities = [
                 RawExtractedEntity(
-                    name=item.name.strip(),
-                    type=item.type.strip(),
+                    name=e.name.strip(),
+                    type=e.type.strip(),
                 )
-                for item in parsed.entities
-                if item.name and item.type
+                for e in parsed.entities
+                if e.name and e.type
             ]
 
-            logger.info(f"🤖 LLM extracted entities: {len(entities)}")
-            if entities:
-                logger.debug(
-                    f"🤖 Entities: {[f'{e.name} [{e.type}]' for e in entities]}"
+            triples = [
+                RawExtractedTriple(
+                    subject=t.subject.strip(),
+                    predicate=t.predicate.strip(),
+                    object=t.object.strip(),
                 )
+                for t in parsed.triples
+                if t.subject and t.predicate and t.object
+            ]
 
-            return entities
+            logger.info(
+                f"🤖 LLM result: {len(entities)} entities, "
+                f"{len(triples)} triples"
+            )
+
+            return ExtractionResult(entities=entities, triples=triples)
 
         except Exception as e:
             logger.exception(f"❌ LLM extraction failed: {e}")
-            return []
+            return ExtractionResult()

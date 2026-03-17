@@ -15,6 +15,4 @@ class ConfigProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_ollama_settings(self) -> OllamaSettings:
-        return OllamaSettings(
-            is_cloud=False
-        )
+        return OllamaSettings()
