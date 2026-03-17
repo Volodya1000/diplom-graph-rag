@@ -11,10 +11,12 @@ CLI для очистки Neo4j базы данных
 """
 
 import asyncio
+import logging
 import sys
 from pathlib import Path
 
 import typer
+from pydantic import SecretStr
 from rich.console import Console
 
 # Добавляем корень проекта в sys.path
@@ -26,7 +28,8 @@ from src.config.base import AppConfig
 from src.persistence.neo4j.neo4j_repository import Neo4jRepository
 from src.config.neo4j_settings import Neo4jSettings
 
-setup_logging(level="INFO", disable_verbose=True)
+setup_logging(level=logging.INFO, disable_verbose=True)
+
 console = Console()
 
 app = typer.Typer(
@@ -38,16 +41,12 @@ app = typer.Typer(
 
 def get_repo() -> Neo4jRepository:
     config = AppConfig()
-
-    # Создаём объект настроек, который ожидает Neo4jRepository
     settings = Neo4jSettings(
         uri=config.NEO4J_URI,
         user=config.NEO4J_USER,
-        password_value=config.NEO4J_PASSWORD,  # ← обратите внимание на имя поля
+        password=SecretStr(config.NEO4J_PASSWORD),  # ← обёртка
     )
-
     return Neo4jRepository(settings)
-
 
 async def clear_all(force: bool = False):
     """Полная очистка базы (узлы + связи)"""
@@ -101,7 +100,7 @@ async def clear_documents():
         ]
         async with repo.driver.session() as session:
             for q in queries:
-                await session.run(q)
+                await session.run(q)  # type: ignore[arg-type]
 
         console.print("[bold green]Документы и чанки удалены ✓[/bold green]")
 

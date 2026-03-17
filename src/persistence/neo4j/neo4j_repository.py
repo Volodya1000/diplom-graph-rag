@@ -5,7 +5,7 @@ import logging
 from src.config.neo4j_settings import Neo4jSettings
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
 from src.domain.models import (
-    DocumentNode, ChunkNode, SchemaClass, SchemaStatus, InstanceNode, GraphEdge
+    DocumentNode, ChunkNode, SchemaClass, InstanceNode, GraphEdge
 )
 
 logger = logging.getLogger(__name__)

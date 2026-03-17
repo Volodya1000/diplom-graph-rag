@@ -52,7 +52,7 @@ async def main():
         console.print(f"[bold yellow]Индексация документа:[/bold yellow] {file_path.name}")
         doc_id = await use_case.execute(file_path)
 
-        console.print(f"[bold green]✔ Успех![/bold green] Документ сохранен в Neo4j.")
+        console.print("[bold green]✔ Успех![/bold green] Документ сохранен в Neo4j.")
         console.print(f"ID: [cyan]{doc_id}[/cyan]")
     except Exception as e:
         console.print(f"[bold red]Ошибка:[/bold red] {str(e)}")

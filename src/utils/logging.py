@@ -72,7 +72,6 @@ def disable_noisy_loggers():
     transformers_logging.set_verbosity_error()   # или logging.set_verbosity_warning()
 
     # Подавляем конкретные категории предупреждений
-    import warnings
     warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
     warnings.filterwarnings("ignore", message=".*layers were not sharded.*")
     warnings.filterwarnings("ignore", message=".*Token indices sequence length is longer.*")

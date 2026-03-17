@@ -7,9 +7,7 @@ Use Case: Инициализация базового T-Box в графе.
 """
 
 import logging
-from typing import List
 
-from src.domain.models import SchemaClass, SchemaStatus
 from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
 

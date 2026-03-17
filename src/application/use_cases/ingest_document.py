@@ -1,9 +1,11 @@
 import logging
 from pathlib import Path
 
+from domain.models import RawExtractedEntity
 from src.domain.models import (
-    DocumentNode, ChunkNode, DocumentAggregate, InstanceAggregate,
-)
+    DocumentNode, ChunkNode, )
+from domain.agregates.instance_agregate import InstanceAggregate
+from domain.agregates.document_agregate import DocumentAggregate
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.llm.llm_client import ILLMClient
@@ -83,7 +85,7 @@ class IngestDocumentUseCase:
 
         # === SAVE DOC + CHUNKS ===
         await self.repo.save_document(doc)
-        logger.info(f"💾 Document saved: {doc.doc_id}")
+        logger.info("💾 Document saved")
 
         for chunk in domain_chunks:
             await self.repo.save_chunk(chunk)
@@ -104,10 +106,16 @@ class IngestDocumentUseCase:
             current_tbox = await self.repo.get_tbox_classes()
             logger.debug(f"TBOX classes: {[c.name for c in current_tbox]}")
 
-            raw_entities = await self.llm.extract_entities(
+            raw_entities:list[RawExtractedEntity] = await self.llm.extract_entities(
                 chunk.text, current_tbox
             )
             logger.info(f"🤖 Raw entities extracted: {len(raw_entities)}")
+
+            if raw_entities:
+                logger.info(
+                    "📌 Extracted entities: " +
+                    ", ".join(f"{e.name} ({e.type})" for e in raw_entities)
+                )
 
             instances, new_classes = await self.er_svc.process_entities(
                 raw_entities, current_tbox, chunk.chunk_id
@@ -134,7 +142,7 @@ class IngestDocumentUseCase:
             total_entities += len(instances)
 
         logger.info(
-            f"✅ Ingest finished: doc_id={doc.doc_id}, "
+            f"✅ Ingest finished: "
             f"total_entities={total_entities}"
         )
         return doc.doc_id

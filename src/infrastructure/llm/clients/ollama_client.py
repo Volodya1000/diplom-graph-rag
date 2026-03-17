@@ -1,4 +1,6 @@
 import re
+from re import Pattern
+
 import logging
 from typing import List
 
@@ -30,22 +32,17 @@ class _ExtractedEntities(BaseModel):
 
 # --- Утилита очистки вывода LLM ---
 
-_RE_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
-_RE_CODE_BLOCK = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
-
+_RE_THINK: Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
+_RE_CODE_BLOCK: Pattern[str] = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
 
 def _clean_llm_output(message: AIMessage) -> str:
-    """Убирает <think>-теги, markdown-блоки и защищает от пустых ответов."""
     text = message.content if isinstance(message, AIMessage) else str(message)
-    text = _RE_THINK.sub("", text)
-    text = _RE_CODE_BLOCK.sub("", text)
+    text = _RE_THINK.sub("", text)        # type: ignore[arg-type]
+    text = _RE_CODE_BLOCK.sub("", text)   # type: ignore[arg-type]
     text = text.strip()
-
-    # 🔥 ЗАЩИТА ОТ КРАША: Если после очистки пусто, возвращаем пустой валидный JSON
     if not text:
         logger.warning("⚠️ LLM вернула пустой ответ или только <think> теги.")
         return '{"entities": []}'
-
     return text
 
 
@@ -65,8 +62,8 @@ class OllamaClient(ILLMClient):
             base_url=url,
             temperature=settings.temperature,
             num_ctx=settings.num_ctx,
-            headers=settings.headers,
-            format="json",  # 🔥 КРИТИЧЕСКИ ВАЖНО: Запрещает LLM выводить текст, кроме JSON
+            client_kwargs={"headers": settings.headers},
+            format="json",
             verbose=False,
         )
 

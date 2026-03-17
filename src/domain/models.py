@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from dataclasses import dataclass, field
 
@@ -15,7 +15,7 @@ class SchemaStatus(str, Enum):
 class DocumentNode(BaseModel):
     doc_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     filename: str
-    upload_date: datetime = Field(default_factory=datetime.utcnow)
+    upload_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ChunkNode(BaseModel):
@@ -77,49 +77,3 @@ class GraphEdge:
     properties: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
-class DocumentAggregate:
-    document: DocumentNode
-    chunks: List[ChunkNode]
-
-    def build_edges(self) -> List[GraphEdge]:
-        edges: List[GraphEdge] = []
-
-        for chunk in self.chunks:
-            edges.append(GraphEdge(
-                relation_type=GraphRelationType.HAS_CHUNK,
-                source_id=self.document.doc_id,
-                target_id=chunk.chunk_id
-            ))
-
-        for i in range(len(self.chunks) - 1):
-            edges.append(GraphEdge(
-                relation_type=GraphRelationType.NEXT_CHUNK,
-                source_id=self.chunks[i].chunk_id,
-                target_id=self.chunks[i + 1].chunk_id
-            ))
-            edges.append(GraphEdge(
-                relation_type=GraphRelationType.PREV_CHUNK,
-                source_id=self.chunks[i + 1].chunk_id,
-                target_id=self.chunks[i].chunk_id
-            ))
-        return edges
-
-
-@dataclass
-class InstanceAggregate:
-    instance: InstanceNode
-
-    def build_edges(self) -> List[GraphEdge]:
-        return [
-            GraphEdge(
-                relation_type=GraphRelationType.INSTANCE_OF,
-                source_id=self.instance.instance_id,
-                target_id=self.instance.class_name
-            ),
-            GraphEdge(
-                relation_type=GraphRelationType.MENTIONED_IN,
-                source_id=self.instance.instance_id,
-                target_id=self.instance.chunk_id
-            )
-        ]

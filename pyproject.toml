@@ -25,4 +25,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "git-filter-repo>=2.47.0",
+    "ruff>=0.15.6",
+    "ty>=0.0.23",
 ]
+
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E402"]
+"src/presentation/cli/*.py" = ["E402"]
