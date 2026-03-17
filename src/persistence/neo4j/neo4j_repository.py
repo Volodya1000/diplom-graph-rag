@@ -1,36 +1,47 @@
 from neo4j import AsyncGraphDatabase
 from typing import List
 import logging
+
+from src.config.neo4j_settings import Neo4jSettings
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
 from src.domain.models import (
-    DocumentNode, ChunkNode, SchemaClass, InstanceNode,
-    GraphEdge, DocumentAggregate
+    DocumentNode, ChunkNode, SchemaClass, SchemaStatus, InstanceNode, GraphEdge
 )
 
 logger = logging.getLogger(__name__)
 
 
 class Neo4jRepository(IGraphRepository):
-    def __init__(self, uri, user, password):
-        self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, settings: Neo4jSettings):
+        self._settings = settings
+        self.driver = AsyncGraphDatabase.driver(
+            settings.uri,
+            auth=(settings.user, settings.password_value),
+        )
 
-    # ====================== ИСПРАВЛЕННЫЙ save_chunk ======================
+    # ====================== ПРИМИТИВЫ УЗЛОВ ======================
+    async def save_document(self, document: DocumentNode) -> None:
+        query = """
+        MERGE (d:Document {doc_id: $doc_id})
+        SET d += $props
+        """
+        params = {
+            "doc_id": document.doc_id,
+            "props": document.model_dump(exclude={"doc_id"}),
+        }
+        async with self.driver.session() as session:
+            await session.run(query, params)
+
     async def save_chunk(self, chunk: ChunkNode) -> None:
-        """
-        MERGE + SET + (опционально) CALL db.create.setNodeVectorProperty
-        Главная ошибка была здесь: после SET нельзя сразу CALL — нужен WITH.
-        """
         query = """
         MERGE (c:Chunk {chunk_id: $chunk_id})
         SET c += $props
         """
-
         params = {
             "chunk_id": chunk.chunk_id,
-            "props": chunk.model_dump(exclude={"chunk_id", "embedding"})
+            "props": chunk.model_dump(exclude={"chunk_id", "embedding"}),
         }
 
-        # Добавляем вектор только если он есть
         if chunk.embedding is not None:
             query += """
             WITH c
@@ -41,64 +52,68 @@ class Neo4jRepository(IGraphRepository):
         async with self.driver.session() as session:
             await session.run(query, params)
 
-    # ====================== save_document (без изменений) ======================
-    async def save_document(self, document: DocumentNode) -> None:
+    async def save_instance(self, instance: InstanceNode) -> None:
         query = """
-        MERGE (d:Document {doc_id: $doc_id})
-        SET d += $props
+        MERGE (i:Instance {instance_id: $instance_id})
+        SET i += $props
         """
         params = {
-            "doc_id": document.doc_id,
-            "props": document.model_dump(exclude={"doc_id"})
+            "instance_id": instance.instance_id,
+            "props": instance.model_dump(exclude={"instance_id", "embedding"}),
         }
+
+        if instance.embedding is not None:
+            query += """
+            WITH i
+            CALL db.create.setNodeVectorProperty(i, 'embedding', $embedding)
+            """
+            params["embedding"] = instance.embedding
+
         async with self.driver.session() as session:
             await session.run(query, params)
 
-    # ====================== save_edges (без изменений) ======================
+    # ====================== УНИВЕРСАЛЬНЫЕ РЁБРА ======================
     async def save_edges(self, edges: List[GraphEdge]) -> None:
         if not edges:
             return
-
         async with self.driver.session() as session:
             for edge in edges:
                 rel_type = edge.relation_type.value
                 query = f"""
                 MATCH (source)
-                WHERE (source:Document AND source.doc_id = $source_id)
-                   OR (source:Chunk    AND source.chunk_id = $source_id)
+                WHERE (source:Document  AND source.doc_id      = $source_id)
+                   OR (source:Chunk     AND source.chunk_id    = $source_id)
+                   OR (source:Instance  AND source.instance_id = $source_id)
                 MATCH (target)
-                WHERE (target:Chunk AND target.chunk_id = $target_id)
+                WHERE (target:Chunk       AND target.chunk_id = $target_id)
+                   OR (target:SchemaClass AND target.name     = $target_id)
                 MERGE (source)-[r:{rel_type}]->(target)
                 """
                 params = {
                     "source_id": edge.source_id,
-                    "target_id": edge.target_id
+                    "target_id": edge.target_id,
                 }
                 await session.run(query, params)
 
-    # ====================== Deprecated обёртка ======================
-    async def save_document_and_chunks(
-        self, document: DocumentNode, chunks: List[ChunkNode]
-    ) -> None:
-        await self.save_document(document)
-
-        chunks_sorted = sorted(chunks, key=lambda c: c.chunk_index)
-        for chunk in chunks_sorted:
-            await self.save_chunk(chunk)
-
-        aggregate = DocumentAggregate(document=document, chunks=chunks_sorted)
-        edges = aggregate.build_edges()
-        await self.save_edges(edges)
-
-    # ====================== Остальные методы (без изменений) ======================
+    # ====================== T-BOX ======================
     async def get_tbox_classes(self) -> List[SchemaClass]:
         query = """
         MATCH (c:SchemaClass)
-        RETURN c.name AS name, c.status AS status
+        RETURN c.name AS name,
+               c.status AS status,
+               coalesce(c.description, '') AS description
         """
         async with self.driver.session() as session:
             res = await session.run(query)
-            return [SchemaClass(**record) for record in await res.data()]
+            data = await res.data()
+            return [
+                SchemaClass(
+                    name=r["name"],
+                    status=r["status"],
+                    description=r["description"],
+                )
+                for r in data
+            ]
 
     async def save_tbox_classes(self, classes: List[SchemaClass]) -> None:
         if not classes:
@@ -106,33 +121,22 @@ class Neo4jRepository(IGraphRepository):
         query = """
         UNWIND $batch AS row
         MERGE (c:SchemaClass {name: row.name})
-        ON CREATE SET c.status = row.status
+        ON CREATE SET c.status      = row.status,
+                      c.description = row.description
+        ON MATCH  SET c.description = row.description
         """
-        batch = [{"name": c.name, "status": c.status.value} for c in classes]
+        batch = [
+            {
+                "name": c.name,
+                "status": c.status.value,
+                "description": c.description,
+            }
+            for c in classes
+        ]
         async with self.driver.session() as session:
             await session.run(query, batch=batch)
 
     async def find_candidates_by_vector(
-        self,
-        embedding: List[float],
-        limit: int = 5
+        self, embedding: List[float], limit: int = 5
     ) -> List[InstanceNode]:
         return []
-
-    async def save_instances(self, instances: List[InstanceNode]) -> None:
-        if not instances:
-            return
-        query = """
-        UNWIND $batch AS row
-        MATCH (class:SchemaClass {name: row.class_name})
-        MATCH (chunk:Chunk {chunk_id: row.chunk_id})
-        MERGE (inst:Instance {instance_id: row.instance_id})
-        SET inst.name = row.name
-        MERGE (inst)-[:INSTANCE_OF]->(class)
-        MERGE (inst)-[:MENTIONED_IN]->(chunk)
-        WITH inst, row
-        CALL db.create.setNodeVectorProperty(inst, 'embedding', row.embedding)
-        """
-        batch = [i.model_dump() for i in instances]
-        async with self.driver.session() as session:
-            await session.run(query, batch=batch)

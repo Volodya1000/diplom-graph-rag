@@ -29,64 +29,53 @@ def setup_logging(level: Optional[int] = None, disable_verbose: bool = True):
 
 def disable_noisy_loggers():
     """Отключает многословные логи от различных библиотек"""
-
-    # Список логгеров для отключения/уменьшения
     noisy_loggers = [
-        # Docling
-        "docling.datamodel",
+        # Твои основные источники шума
+        "src.infrastructure.docling.doc_processor",          # Loading tokenizer / OCR Engine
         "docling.document_converter",
         "docling.models.factories",
-        "docling.utils.accelerator_utils",
         "docling.models.layout_model",
         "docling.pipeline",
         "docling.models.table_structure_model",
 
-        # HTTPX (используется некоторыми библиотеками)
-        "httpx",
-        "httpcore",
-
-        # HuggingFace
-        "huggingface_hub.file_download",
-        "huggingface_hub.repository",
-        "huggingface_hub.hf_api",
-        "urllib3.connectionpool",
-        "filelock",
-
-        # EasyOCR
-        "easyocr.easyocr",
-
-        # Transformers
+        # Transformers / sentence-transformers / tokenizers
         "transformers",
         "transformers.modeling_utils",
         "transformers.tokenization_utils",
-
-        # Sentence Transformers
+        "transformers.utils.logging",               # ← особенно важно для "not sharded" и token length
         "sentence_transformers.SentenceTransformer",
+        "tokenizers",
 
-        # PyTorch
+        # HuggingFace общие
+        "huggingface_hub.file_download",
+        "huggingface_hub.repository",
+        "huggingface_hub.hf_api",
+
+        # Остальные (как было раньше)
+        "httpx",
+        "httpcore",
+        "easyocr.easyocr",
         "torch",
-        "torch.distributed",
-
-        # Neo4j
         "neo4j",
-        "neo4j.pool",
-
-        # Общие
         "PIL",
         "matplotlib",
         "asyncio",
     ]
 
-    for logger_name in noisy_loggers:
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.WARNING)  # Только предупреждения и ошибки
-        logger.propagate = False  # Не передавать сообщения выше
+    for name in noisy_loggers:
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.WARNING)          # или даже logging.ERROR
+        logger.propagate = False
 
-    # Отключаем конкретные предупреждения
-    warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+    # Специально для transformers — самый надёжный способ убрать "not sharded" и token length warning
+    from transformers.utils import logging as transformers_logging
+    transformers_logging.set_verbosity_error()   # или logging.set_verbosity_warning()
+
+    # Подавляем конкретные категории предупреждений
+    import warnings
     warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
-    warnings.filterwarnings("ignore", message="Xet Storage is enabled")
-
+    warnings.filterwarnings("ignore", message=".*layers were not sharded.*")
+    warnings.filterwarnings("ignore", message=".*Token indices sequence length is longer.*")
 
 def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
     """

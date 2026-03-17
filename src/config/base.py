@@ -12,7 +12,4 @@ class AppConfig(BaseSettings):
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "password"
 
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3"
-
     EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"

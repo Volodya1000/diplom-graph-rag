@@ -1,17 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import List
 from src.domain.models import (
-    DocumentNode,
-    ChunkNode,
-    SchemaClass,
-    InstanceNode,
-    GraphEdge
+    DocumentNode, ChunkNode, SchemaClass, InstanceNode, GraphEdge
 )
 
 
 class IGraphRepository(ABC):
-
-    # ==================== НОВЫЕ ПРИМИТИВНЫЕ МЕТОДЫ (рекомендуется) ====================
+    # === Примитивы сохранения узлов ===
     @abstractmethod
     async def save_document(self, document: DocumentNode) -> None:
         pass
@@ -21,18 +16,15 @@ class IGraphRepository(ABC):
         pass
 
     @abstractmethod
+    async def save_instance(self, instance: InstanceNode) -> None:
+        pass
+
+    # === Универсальное сохранение рёбер ===
+    @abstractmethod
     async def save_edges(self, edges: List[GraphEdge]) -> None:
         pass
 
-    # ==================== СТАРЫЙ МЕТОД (оставлен как обёртка для совместимости) ====================
-    @abstractmethod
-    async def save_document_and_chunks(
-        self, document: DocumentNode, chunks: List[ChunkNode]
-    ) -> None:
-        """Deprecated. Используй save_document + save_chunk + save_edges"""
-        pass
-
-    # ==================== Остальные методы без изменений ====================
+    # === Остальные методы ===
     @abstractmethod
     async def get_tbox_classes(self) -> List[SchemaClass]:
         pass
@@ -47,6 +39,3 @@ class IGraphRepository(ABC):
     ) -> List[InstanceNode]:
         pass
 
-    @abstractmethod
-    async def save_instances(self, instances: List[InstanceNode]) -> None:
-        pass

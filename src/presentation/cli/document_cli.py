@@ -1,19 +1,36 @@
-import asyncio
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+CLI для индексации PDF-документа в графовую БД
+"""
+
 import sys
-import logging  # Добавьте этот импорт
 from pathlib import Path
+
+# Самое первое действие — добавляем корень проекта в sys.path
+# Это нужно делать до любых импортов из src/
+root = Path(__file__).resolve().parents[3]          # поднимаемся на 3 уровня вверх
+sys.path.insert(0, str(root))
+
+# Настраиваем логирование ПЕРЕД импортом любых тяжёлых библиотек
+from src.utils.logging import setup_logging
+
+import logging
+# Вызываем настройку логов как можно раньше
+setup_logging(level=logging.INFO, disable_verbose=True)
+
+# Теперь можно безопасно импортировать всё остальное
+import asyncio
+
 from rich.console import Console
 
-# Добавляем корневую директорию в путь
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from src.utils.logging import setup_logging, get_logger
 from src.di.container import setup_di
 from src.application.use_cases.ingest_document import IngestDocumentUseCase
 
-# Настраиваем логирование при импорте
-setup_logging(level=logging.INFO, disable_verbose=True)
-logger = get_logger(__name__)
+# Получаем логгер уже после настройки
+logger = logging.getLogger(__name__)
+
 console = Console()
 
 

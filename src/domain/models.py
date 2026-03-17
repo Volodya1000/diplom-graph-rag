@@ -33,6 +33,7 @@ class ChunkNode(BaseModel):
 class SchemaClass(BaseModel):
     name: str
     status: SchemaStatus = SchemaStatus.DRAFT
+    description: str = ""                              # ← ДОБАВЛЕНО
 
 
 class SchemaRelation(BaseModel):
@@ -58,20 +59,18 @@ class InstanceNode(BaseModel):
 
 
 # ===================================================================
-# НОВОЕ: вся логика рёбер теперь здесь (в домене)
+# ВСЯ ЛОГИКА ГРАФА — ТОЛЬКО ЗДЕСЬ (ДОМЕН)
 # ===================================================================
 class GraphRelationType(str, Enum):
-    """Все типы отношений определяются ТОЛЬКО здесь"""
-    HAS_CHUNK    = "HAS_CHUNK"
-    NEXT_CHUNK   = "NEXT_CHUNK"
-    PREV_CHUNK   = "PREV_CHUNK"
-    INSTANCE_OF  = "INSTANCE_OF"
-    MENTIONED_IN = "MENTIONED_IN"
+    HAS_CHUNK     = "HAS_CHUNK"
+    NEXT_CHUNK    = "NEXT_CHUNK"
+    PREV_CHUNK    = "PREV_CHUNK"
+    INSTANCE_OF   = "INSTANCE_OF"
+    MENTIONED_IN  = "MENTIONED_IN"
 
 
 @dataclass(frozen=True)
 class GraphEdge:
-    """Абстрактное ребро — не зависит от Neo4j или любой другой БД"""
     relation_type: GraphRelationType
     source_id: str
     target_id: str
@@ -80,14 +79,12 @@ class GraphEdge:
 
 @dataclass
 class DocumentAggregate:
-    """Агрегат документа + чанков. Вся логика связей — здесь."""
     document: DocumentNode
-    chunks: List[ChunkNode]   # уже отсортированы по chunk_index
+    chunks: List[ChunkNode]
 
     def build_edges(self) -> List[GraphEdge]:
         edges: List[GraphEdge] = []
 
-        # Document → Chunk
         for chunk in self.chunks:
             edges.append(GraphEdge(
                 relation_type=GraphRelationType.HAS_CHUNK,
@@ -95,7 +92,6 @@ class DocumentAggregate:
                 target_id=chunk.chunk_id
             ))
 
-        # Чанки по порядку
         for i in range(len(self.chunks) - 1):
             edges.append(GraphEdge(
                 relation_type=GraphRelationType.NEXT_CHUNK,
@@ -107,5 +103,23 @@ class DocumentAggregate:
                 source_id=self.chunks[i + 1].chunk_id,
                 target_id=self.chunks[i].chunk_id
             ))
-
         return edges
+
+
+@dataclass
+class InstanceAggregate:
+    instance: InstanceNode
+
+    def build_edges(self) -> List[GraphEdge]:
+        return [
+            GraphEdge(
+                relation_type=GraphRelationType.INSTANCE_OF,
+                source_id=self.instance.instance_id,
+                target_id=self.instance.class_name
+            ),
+            GraphEdge(
+                relation_type=GraphRelationType.MENTIONED_IN,
+                source_id=self.instance.instance_id,
+                target_id=self.instance.chunk_id
+            )
+        ]

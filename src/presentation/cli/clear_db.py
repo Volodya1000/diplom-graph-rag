@@ -1,213 +1,218 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
-Скрипт для очистки базы данных Neo4j.
-Удаляет все узлы и связи.
+CLI для очистки Neo4j базы данных
+
+Примеры:
+    python clear_db.py                     # интерактивный режим
+    python clear_db.py stats               # только статистика
+    python clear_db.py full --force        # полная очистка без вопросов
+    python clear_db.py docs                # удалить только документы и чанки
 """
 
 import asyncio
 import sys
-import logging
 from pathlib import Path
+
+import typer
 from rich.console import Console
-from rich.prompt import Confirm
 
-# Добавляем корневую директорию в путь
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+# Добавляем корень проекта в sys.path
+root = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(root))
 
-from src.utils.logging import setup_logging, get_logger
-from src.di.container import setup_di
-from src.persistence.neo4j.neo4j_repository import Neo4jRepository
+from src.utils.logging import setup_logging
 from src.config.base import AppConfig
+from src.persistence.neo4j.neo4j_repository import Neo4jRepository
+from src.config.neo4j_settings import Neo4jSettings
 
-# Настраиваем логирование
-setup_logging(level=logging.INFO, disable_verbose=True)
-logger = get_logger(__name__)
+setup_logging(level="INFO", disable_verbose=True)
 console = Console()
 
+app = typer.Typer(
+    name="neo4j-clean",
+    help="Инструмент для очистки Neo4j",
+    add_completion=False,
+)
 
-async def clear_database():
-    """Полная очистка базы данных Neo4j"""
 
-    # Запрашиваем подтверждение
-    if not Confirm.ask("[bold red]Вы уверены, что хотите удалить ВСЕ данные из Neo4j?[/bold red]"):
-        console.print("[yellow]Операция отменена[/yellow]")
-        return
-
-    console.print("[dim]Подключение к Neo4j...[/dim]")
-
-    # Получаем конфигурацию
+def get_repo() -> Neo4jRepository:
     config = AppConfig()
 
-    # Создаем прямое подключение к Neo4j (без использования контейнера DI)
-    repo = Neo4jRepository(
-        config.NEO4J_URI,
-        config.NEO4J_USER,
-        config.NEO4J_PASSWORD
+    # Создаём объект настроек, который ожидает Neo4jRepository
+    settings = Neo4jSettings(
+        uri=config.NEO4J_URI,
+        user=config.NEO4J_USER,
+        password_value=config.NEO4J_PASSWORD,  # ← обратите внимание на имя поля
     )
 
+    return Neo4jRepository(settings)
+
+
+async def clear_all(force: bool = False):
+    """Полная очистка базы (узлы + связи)"""
+    if not force and not typer.confirm(
+            "[bold red]Вы уверены, что хотите удалить ВСЁ из Neo4j?[/bold red]",
+            default=False,
+    ):
+        console.print("[yellow]Отменено[/yellow]")
+        return
+
+    repo = get_repo()
     try:
-        # Запросы для очистки базы данных
-        queries = [
-            # Удаляем все связи
-            "MATCH ()-[r]-() DELETE r",
-
-            # Удаляем все узлы
-            "MATCH (n) DELETE n",
-
-            # Удаляем все индексы (опционально)
-            # "CALL apoc.schema.assert({}, {})",  # Требует APOC
-        ]
-
-        console.print("[yellow]Удаление всех данных...[/yellow]")
-
+        console.print("[yellow]Очистка базы...[/yellow]")
         async with repo.driver.session() as session:
-            for query in queries:
-                await session.run(query)
+            await session.run("MATCH ()-[r]-() DELETE r")
+            await session.run("MATCH (n) DELETE n")
 
-        # Проверяем, что база пуста
+        # Проверка
         async with repo.driver.session() as session:
-            result = await session.run("MATCH (n) RETURN count(n) as count")
-            data = await result.data()
-            count = data[0]['count'] if data else 0
+            result = await session.run("MATCH (n) RETURN count(n) AS cnt")
+            record = await result.single()
+            cnt = record["cnt"] if record else 0
 
-            if count == 0:
-                console.print("[bold green]✔ База данных успешно очищена![/bold green]")
-            else:
-                console.print(f"[yellow]В базе осталось {count} узлов[/yellow]")
+        if cnt == 0:
+            console.print("[bold green]База успешно очищена ✓[/bold green]")
+        else:
+            console.print(f"[yellow]Осталось узлов: {cnt}[/yellow]")
 
     except Exception as e:
-        console.print(f"[bold red]Ошибка при очистке:[/bold red] {str(e)}")
-        logger.exception("Детали ошибки:")
+        console.print(f"[bold red]Ошибка:[/bold red] {e}")
+        raise typer.Exit(1)
     finally:
         await repo.driver.close()
 
 
-async def clear_documents_only():
-    """Удаляет только документы и чанки, сохраняя схему и экземпляры"""
-
-    if not Confirm.ask("[bold yellow]Удалить только документы и чанки? Схема и экземпляры сохранятся[/bold yellow]"):
+async def clear_documents():
+    """Удалить только документы и чанки (с подтверждением)"""
+    if not typer.confirm(
+            "[bold yellow]Удалить только документы и чанки?[/bold yellow]",
+            default=False,
+    ):
         return
 
-    console.print("[dim]Подключение к Neo4j...[/dim]")
-
-    config = AppConfig()
-    repo = Neo4jRepository(
-        config.NEO4J_URI,
-        config.NEO4J_USER,
-        config.NEO4J_PASSWORD
-    )
-
+    repo = get_repo()
     try:
+        console.print("[yellow]Удаление документов и чанков...[/yellow]")
         queries = [
-            # Удаляем связи NEXT_CHUNK и PREV_CHUNK
-            "MATCH ()-[r:NEXT_CHUNK]-() DELETE r",
-            "MATCH ()-[r:PREV_CHUNK]-() DELETE r",
-
-            # Удаляем связи HAS_CHUNK
-            "MATCH ()-[r:HAS_CHUNK]-() DELETE r",
-
-            # Удаляем связи MENTIONED_IN
-            "MATCH ()-[r:MENTIONED_IN]-() DELETE r",
-
-            # Удаляем чанки
+            "MATCH ()-[r:NEXT_CHUNK|PREV_CHUNK|HASA_CHUNK|MENTIONED_IN]-() DELETE r",
             "MATCH (c:Chunk) DELETE c",
-
-            # Удаляем документы
             "MATCH (d:Document) DELETE d",
         ]
-
-        console.print("[yellow]Удаление документов и чанков...[/yellow]")
-
         async with repo.driver.session() as session:
-            for query in queries:
-                await session.run(query)
+            for q in queries:
+                await session.run(q)
 
-        console.print("[bold green]✔ Документы и чанки удалены[/bold green]")
+        console.print("[bold green]Документы и чанки удалены ✓[/bold green]")
 
     except Exception as e:
-        console.print(f"[bold red]Ошибка:[/bold red] {str(e)}")
+        console.print(f"[bold red]Ошибка:[/bold red] {e}")
+        raise typer.Exit(1)
     finally:
         await repo.driver.close()
 
 
-async def show_stats():
-    """Показывает статистику базы данных"""
-
-    config = AppConfig()
-    repo = Neo4jRepository(
-        config.NEO4J_URI,
-        config.NEO4J_USER,
-        config.NEO4J_PASSWORD
-    )
-
+async def print_stats():
+    """Показать статистику по узлам и связям"""
+    repo = get_repo()
     try:
-        async with repo.driver.session() as session:
-            # Считаем узлы по типам
-            result = await session.run("""
+        async with repo.driver.session() as s:
+            # Узлы
+            nodes_result = await s.run("""
                 MATCH (n)
-                RETURN labels(n) as type, count(n) as count
-                ORDER BY count DESC
+                RETURN labels(n) AS lbls, count(n) AS cnt
+                ORDER BY cnt DESC
             """)
-            nodes = await result.data()
+            rows = await nodes_result.data()
 
-            console.print("\n[bold cyan]Статистика базы данных:[/bold cyan]")
+            console.print("\n[bold cyan]Узлы[/bold cyan]")
+            if not rows:
+                console.print("    (база пуста)")
+            else:
+                for r in rows:
+                    lbl = ", ".join(r["lbls"]) or "<без меток>"
+                    console.print(f"    {lbl:<36} {r['cnt']:>6}")
 
-            if not nodes:
-                console.print("[yellow]База данных пуста[/yellow]")
-                return
-
-            for node in nodes:
-                types = ', '.join(node['type']) if node['type'] else 'No labels'
-                console.print(f"  {types}: {node['count']}")
-
-            # Считаем связи
-            result = await session.run("""
+            # Связи
+            rels_result = await s.run("""
                 MATCH ()-[r]->()
-                RETURN type(r) as type, count(r) as count
-                ORDER BY count DESC
+                RETURN type(r) AS typ, count(r) AS cnt
+                ORDER BY cnt DESC
             """)
-            rels = await result.data()
+            rows = await rels_result.data()
 
-            if rels:
-                console.print("\n[bold cyan]Связи:[/bold cyan]")
-                for rel in rels:
-                    console.print(f"  {rel['type']}: {rel['count']}")
+            if rows:
+                console.print("\n[bold cyan]Связи[/bold cyan]")
+                for r in rows:
+                    console.print(f"    {r['typ']:<24} {r['cnt']:>6}")
 
     except Exception as e:
-        console.print(f"[bold red]Ошибка:[/bold red] {str(e)}")
+        console.print(f"[bold red]Ошибка статистики:[/bold red] {e}")
     finally:
         await repo.driver.close()
 
 
-async def main():
-    """Главная функция с меню"""
+@app.command("full")
+def full(force: bool = typer.Option(False, "--force", "-f", help="Без подтверждения")):
+    """Полная очистка базы без меню"""
+    asyncio.run(clear_all(force=force))
 
-    console.print("[bold cyan]Очистка базы данных Neo4j[/bold cyan]")
-    console.print("=" * 50)
 
-    # Показываем текущую статистику
-    await show_stats()
+@app.command("docs")
+def docs():
+    """Удалить только документы и чанки"""
+    asyncio.run(clear_documents())
 
-    console.print("\n[bold]Выберите действие:[/bold]")
-    console.print("  1. [red]Полная очистка базы (удалить ВСЁ)[/red]")
-    console.print("  2. [yellow]Удалить только документы и чанки[/yellow]")
-    console.print("  3. [green]Показать статистику[/green]")
-    console.print("  4. [blue]Выход[/blue]")
 
-    choice = input("\nВаш выбор (1-4): ").strip()
+@app.command("stats")
+def stats():
+    """Показать статистику базы"""
+    asyncio.run(print_stats())
 
-    if choice == "1":
-        await clear_database()
-    elif choice == "2":
-        await clear_documents_only()
-    elif choice == "3":
-        await show_stats()
-    elif choice == "4":
-        console.print("[blue]Выход[/blue]")
+
+@app.callback(invoke_without_command=True)
+def main(
+        ctx: typer.Context,
+        stats: bool = typer.Option(False, "--stats", "-s", help="Только показать статистику"),
+):
+    """
+    Без аргументов → интерактивный режим
+    """
+    if ctx.invoked_subcommand is not None:
         return
-    else:
-        console.print("[red]Неверный выбор[/red]")
+
+    if stats:
+        asyncio.run(print_stats())
+        raise typer.Exit()
+
+    # Интерактивный режим
+    console.print("[bold cyan]Очистка Neo4j[/bold cyan]  (используйте --help для команд)")
+    console.print("═" * 45)
+
+    asyncio.run(print_stats())
+
+    console.print("\nЧто сделать?")
+    console.print("  [red]f[/red]  —  полная очистка")
+    console.print("  [yellow]d[/yellow]  —  только документы/чанки")
+    console.print("  [green]s[/green]  —  статистика ещё раз")
+    console.print("  [blue]⏎ / q[/blue]  —  выход")
+
+    while True:
+        choice = input("\nВыбор (f/d/s/q): ").strip().lower() or "q"
+        if choice in ("f", "full", "clear", "delete"):
+            asyncio.run(clear_all(force=False))
+            break
+        elif choice in ("d", "docs", "documents"):
+            asyncio.run(clear_documents())
+            break
+        elif choice in ("s", "stats", "stat"):
+            asyncio.run(print_stats())
+        elif choice in ("q", "exit", "quit", ""):
+            console.print("[blue]Выход[/blue]")
+            break
+        else:
+            console.print("[red]Неверно, попробуйте снова[/red]")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    app()
