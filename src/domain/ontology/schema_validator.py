@@ -9,7 +9,7 @@
 
 from typing import Dict, List, Set
 
-from domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.shema import SchemaClass, SchemaRelation
 
 
 class SchemaValidator:

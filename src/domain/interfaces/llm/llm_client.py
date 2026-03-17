@@ -3,8 +3,8 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
-from domain.ontology.shema import SchemaClass, SchemaRelation
+from src.application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
+from src.domain.ontology.shema import SchemaClass, SchemaRelation
 
 class ExtractionResult(BaseModel):
     entities: List[RawExtractedEntity] = Field(default_factory=list)

@@ -1,10 +1,9 @@
 """
 Управление жизненным циклом Neo4j-драйвера.
-Единственное место, где создаётся и закрывается соединение.
 """
 
 import logging
-from neo4j import AsyncGraphDatabase, AsyncDriver
+from neo4j import AsyncGraphDatabase, AsyncDriver, NotificationDisabledCategory
 
 from src.config.neo4j_settings import Neo4jSettings
 
@@ -17,11 +16,15 @@ class Neo4jSessionManager:
         self._driver: AsyncDriver = AsyncGraphDatabase.driver(
             settings.uri,
             auth=(settings.user, settings.password_value),
+            notifications_disabled_categories=[
+                NotificationDisabledCategory.UNRECOGNIZED,
+                NotificationDisabledCategory.HINT,
+                NotificationDisabledCategory.GENERIC,
+            ],
         )
         logger.info(f"🔌 Neo4j driver created → {settings.uri}")
 
     def session(self, **kwargs):
-        """Возвращает async context-manager сессии."""
         return self._driver.session(**kwargs)
 
     async def close(self) -> None:

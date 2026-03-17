@@ -1,8 +1,7 @@
 """
 Neo4j GDS — community detection, PPR, сводки.
 
-Дополнение: save_community_summary перенесён сюда
-из BuildCommunitiesUseCase (DIP).
+Исправление: проекция с orientation='UNDIRECTED' для Leiden/Louvain.
 """
 
 import logging
@@ -38,18 +37,23 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
                 )
                 return
 
+            # UNDIRECTED — обязательно для Leiden/Louvain
             await s.run("""
                 CALL gds.graph.project(
                     $name,
                     'Instance',
-                    '*',
                     {
-                        nodeProperties: ['embedding'],
-                        relationshipProperties: []
+                        ALL_RELS: {
+                            type: '*',
+                            orientation: 'UNDIRECTED'
+                        }
+                    },
+                    {
+                        nodeProperties: ['embedding']
                     }
                 )
             """, {"name": projection_name})
-            logger.info(f"📊 Проекция '{projection_name}' создана")
+            logger.info(f"📊 Проекция '{projection_name}' создана (UNDIRECTED)")
 
     async def drop_projection(
         self, projection_name: str = "instance_graph",
