@@ -7,7 +7,6 @@ from src.application.services.entity_resolution_service import (
 from src.application.services.post_processing_service import PostProcessingService
 from src.application.use_cases.ingest_document import IngestDocumentUseCase
 from src.application.use_cases.seed_tbox import SeedTboxUseCase
-from src.application.use_cases.build_communities import BuildCommunitiesUseCase
 
 
 class ApplicationProvider(Provider):
@@ -19,4 +18,3 @@ class ApplicationProvider(Provider):
     post_processor = provide(PostProcessingService, scope=Scope.APP)
     ingest_use_case = provide(IngestDocumentUseCase, scope=Scope.APP)
     seed_tbox_use_case = provide(SeedTboxUseCase, scope=Scope.APP)
-    build_communities = provide(BuildCommunitiesUseCase, scope=Scope.APP)

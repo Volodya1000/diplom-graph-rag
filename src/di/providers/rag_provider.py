@@ -1,8 +1,7 @@
-"""DI-провайдер для RAG: стратегии, реестр, use case."""
+"""DI-провайдер для RAG: стратегии, реестр, генератор, use case."""
 
 from dishka import Provider, Scope, provide
 
-from src.config.ollama_settings import OllamaSettings
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.graph_analytics_service import IGraphAnalyticsService
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
@@ -11,16 +10,22 @@ from src.domain.value_objects.search_context import SearchMode
 
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
+from src.infrastructure.llm.llm_factory import ChatOllamaFactory
+from src.infrastructure.llm.clients.ollama_answer_generator import (
+    OllamaAnswerGenerator,
+)
 from src.infrastructure.retrieval.vector_search_strategy import VectorSearchStrategy
 from src.infrastructure.retrieval.ppr_strategy import PPRStrategy
 from src.infrastructure.retrieval.community_strategy import CommunityStrategy
 from src.infrastructure.retrieval.hybrid_strategy import HybridStrategy
-from src.infrastructure.neo4j_gds.gds_analytics_service import Neo4jGDSAnalyticsService
-from src.infrastructure.llm.clients.ollama_answer_generator import OllamaAnswerGenerator
+from src.infrastructure.neo4j_gds.gds_analytics_service import (
+    Neo4jGDSAnalyticsService,
+)
 
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
 from src.application.services.context_builder import ContextBuilder
 from src.application.use_cases.answer_question import AnswerQuestionUseCase
+from src.application.use_cases.build_communities import BuildCommunitiesUseCase
 
 
 class RAGProvider(Provider):
@@ -37,9 +42,9 @@ class RAGProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_generator(
-        self, settings: OllamaSettings,
+        self, factory: ChatOllamaFactory,
     ) -> IAnswerGenerator:
-        return OllamaAnswerGenerator(settings)
+        return OllamaAnswerGenerator(factory)
 
     # --- Strategies ---
 
@@ -79,7 +84,6 @@ class RAGProvider(Provider):
         community: CommunityStrategy,
     ) -> RetrievalStrategyRegistry:
         registry = RetrievalStrategyRegistry()
-
         registry.register(SearchMode.LOCAL, vector)
         registry.register(SearchMode.LOCAL_PPR, ppr)
         registry.register(SearchMode.GLOBAL, community)
@@ -95,6 +99,7 @@ class RAGProvider(Provider):
     def provide_context_builder(self) -> ContextBuilder:
         return ContextBuilder()
 
-    # --- Use Case ---
+    # --- Use Cases ---
 
     answer_question = provide(AnswerQuestionUseCase, scope=Scope.APP)
+    build_communities = provide(BuildCommunitiesUseCase, scope=Scope.APP)

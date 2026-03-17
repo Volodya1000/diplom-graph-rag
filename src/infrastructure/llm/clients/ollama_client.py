@@ -1,25 +1,23 @@
 """
-LLM-клиент: извлечение сущностей + троек с контекстом известных сущностей.
+LLM-клиент: извлечение сущностей + троек.
 """
 
-import re
 import logging
-from re import Pattern
 from typing import List
 
 from pydantic import BaseModel, Field
-from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
-from langchain_core.messages import AIMessage
 
-from src.domain.interfaces.llm.llm_client import ILLMClient
-from application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
-from domain.interfaces.llm.llm_client import ExtractionResult
-from domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.interfaces.llm.llm_client import ILLMClient, ExtractionResult
+from src.application.dtos.extraction_dtos import (
+    RawExtractedEntity,
+    RawExtractedTriple,
+)
+from src.domain.ontology.shema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
-from src.config.ollama_settings import OllamaSettings
+from src.infrastructure.llm.llm_factory import ChatOllamaFactory
+from src.infrastructure.llm.output_cleaners import clean_json_output
 from src.infrastructure.llm.prompts.entity_extraction import (
     get_entity_extraction_prompt,
 )
@@ -27,7 +25,7 @@ from src.infrastructure.llm.prompts.entity_extraction import (
 logger = logging.getLogger(__name__)
 
 
-# ---- Внутренние DTO ----
+# ---- Внутренние DTO для парсера ----
 
 class _ParsedEntity(BaseModel):
     name: str
@@ -45,51 +43,9 @@ class _ExtractionOutput(BaseModel):
     triples: List[_ParsedTriple] = Field(default_factory=list)
 
 
-# ---- Очистка ----
-
-_RE_THINK: Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
-_RE_CODE_BLOCK: Pattern[str] = re.compile(
-    r"```(?:json)?\s*", re.IGNORECASE,
-)
-
-
-def _clean_llm_output(message: AIMessage) -> str:
-    text = (
-        message.content
-        if isinstance(message, AIMessage)
-        else str(message)
-    )
-    text = _RE_THINK.sub("", text)
-    text = _RE_CODE_BLOCK.sub("", text)
-    text = text.strip()
-    if not text:
-        logger.warning("⚠️ LLM вернула пустой ответ")
-        return '{"entities": [], "triples": []}'
-    return text
-
-
 class OllamaClient(ILLMClient):
-    def __init__(self, settings: OllamaSettings):
-        self.settings = settings
-        self.llm = self._create_chat_ollama(settings)
-
-    def _create_chat_ollama(self, settings: OllamaSettings) -> ChatOllama:
-        url = settings.base_url
-        logger.info(
-            f"🔌 LLM init | model={settings.model_name} "
-            f"| cloud={settings.is_cloud} | url={url}"
-        )
-        return ChatOllama(
-            model=settings.model_name,
-            base_url=url,
-            temperature=settings.temperature,
-            num_ctx=settings.num_ctx,
-            client_kwargs={"headers": settings.headers},
-            format="json",
-            verbose=False,
-        )
-
-    # ------------------------------------------------------------------
+    def __init__(self, factory: ChatOllamaFactory):
+        self._llm = factory.create_json(temperature=0.4)
 
     async def extract_entities_and_triples(
         self,
@@ -105,18 +61,17 @@ class OllamaClient(ILLMClient):
         known_str = known_entities if known_entities else "(пока нет)"
 
         logger.info(f"📨 LLM input: {len(text)} chars")
-        logger.debug(f"📨 Known entities:\n{known_str}")
 
         parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
-        prompt: ChatPromptTemplate = get_entity_extraction_prompt()
+        prompt = get_entity_extraction_prompt()
         prompt = prompt.partial(
             format_instructions=parser.get_format_instructions(),
         )
 
         chain = (
             prompt
-            | self.llm
-            | RunnableLambda(_clean_llm_output)
+            | self._llm
+            | RunnableLambda(clean_json_output)
             | parser
         )
 
@@ -136,7 +91,6 @@ class OllamaClient(ILLMClient):
                 for e in parsed.entities
                 if e.name and e.type
             ]
-
             triples = [
                 RawExtractedTriple(
                     subject=t.subject.strip(),
@@ -151,7 +105,6 @@ class OllamaClient(ILLMClient):
                 f"🤖 LLM: {len(entities)} entities, "
                 f"{len(triples)} triples"
             )
-
             return ExtractionResult(entities=entities, triples=triples)
 
         except Exception as e:

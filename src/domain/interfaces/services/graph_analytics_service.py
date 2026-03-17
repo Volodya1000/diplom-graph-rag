@@ -1,7 +1,5 @@
 """
 Абстракция над графовой аналитикой (Neo4j GDS).
-
-Domain-слой не знает о GDS — только о результатах.
 """
 
 from abc import ABC, abstractmethod
@@ -11,28 +9,18 @@ from src.domain.value_objects.graph_community import GraphCommunity
 
 
 class IGraphAnalyticsService(ABC):
-    """Аналитика графа: community detection, PPR, centrality."""
 
     # ============= GRAPH PROJECTION =============
 
     @abstractmethod
     async def ensure_projection(
-        self,
-        projection_name: str = "instance_graph",
-    ) -> None:
-        """
-        Создаёт/обновляет проекцию графа для алгоритмов GDS.
-        Идемпотентно.
-        """
-        ...
+        self, projection_name: str = "instance_graph",
+    ) -> None: ...
 
     @abstractmethod
     async def drop_projection(
-        self,
-        projection_name: str = "instance_graph",
-    ) -> None:
-        """Удаляет проекцию (если существует)."""
-        ...
+        self, projection_name: str = "instance_graph",
+    ) -> None: ...
 
     # ============= COMMUNITY DETECTION =============
 
@@ -43,30 +31,25 @@ class IGraphAnalyticsService(ABC):
         projection_name: str = "instance_graph",
         write_property: str = "community_id",
     ) -> int:
-        """
-        Запускает community detection и записывает community_id
-        в свойства нод.
-
-        Returns:
-            Количество найденных сообществ.
-        """
+        """Возвращает количество найденных сообществ."""
         ...
 
     @abstractmethod
-    async def get_communities(self) -> List[GraphCommunity]:
-        """Возвращает все сообщества с их участниками."""
-        ...
+    async def get_communities(self) -> List[GraphCommunity]: ...
 
     @abstractmethod
     async def get_community_members(
         self, community_id: int,
-    ) -> List[Dict[str, Any]]:
-        """
-        Возвращает участников сообщества с их связями.
+    ) -> List[Dict[str, Any]]: ...
 
-        Returns:
-            [{"instance_id": ..., "name": ..., "class_name": ..., "relations": [...]}]
-        """
+    @abstractmethod
+    async def save_community_summary(
+        self,
+        community_id: int,
+        summary: str,
+        key_entities: List[str],
+    ) -> None:
+        """Сохраняет сгенерированную сводку сообщества."""
         ...
 
     # ============= PERSONALIZED PAGERANK =============
@@ -78,13 +61,4 @@ class IGraphAnalyticsService(ABC):
         top_k: int = 20,
         damping_factor: float = 0.85,
         projection_name: str = "instance_graph",
-    ) -> List[Dict[str, Any]]:
-        """
-        Personalized PageRank от заданных seed-нод.
-
-        Returns:
-            [{"instance_id": ..., "name": ..., "class_name": ...,
-              "score": ..., "chunk_id": ...}]
-            отсортированные по score DESC.
-        """
-        ...
+    ) -> List[Dict[str, Any]]: ...

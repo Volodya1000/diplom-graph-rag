@@ -1,7 +1,8 @@
 """
-Neo4j Graph Data Science — community detection, PPR.
+Neo4j GDS — community detection, PPR, сводки.
 
-Требует: плагин neo4j-graph-data-science в Neo4j.
+Дополнение: save_community_summary перенесён сюда
+из BuildCommunitiesUseCase (DIP).
 """
 
 import logging
@@ -23,21 +24,20 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
     # ============= PROJECTION =============
 
     async def ensure_projection(
-        self,
-        projection_name: str = "instance_graph",
+        self, projection_name: str = "instance_graph",
     ) -> None:
         async with self._sm.session() as s:
-            # Проверяем существование
             res = await s.run(
                 "CALL gds.graph.exists($name) YIELD exists",
                 {"name": projection_name},
             )
             record = await res.single()
             if record and record["exists"]:
-                logger.debug(f"📊 Проекция '{projection_name}' уже существует")
+                logger.debug(
+                    f"📊 Проекция '{projection_name}' уже существует"
+                )
                 return
 
-            # Создаём проекцию: Instance-ноды, все связи между ними
             await s.run("""
                 CALL gds.graph.project(
                     $name,
@@ -52,8 +52,7 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
             logger.info(f"📊 Проекция '{projection_name}' создана")
 
     async def drop_projection(
-        self,
-        projection_name: str = "instance_graph",
+        self, projection_name: str = "instance_graph",
     ) -> None:
         async with self._sm.session() as s:
             res = await s.run(
@@ -78,12 +77,16 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
     ) -> int:
         await self.ensure_projection(projection_name)
 
-        if algorithm == "leiden":
-            algo_call = "gds.leiden.write"
-        elif algorithm == "louvain":
-            algo_call = "gds.louvain.write"
-        else:
-            raise ValueError(f"Неизвестный алгоритм: {algorithm}")
+        algo_map = {
+            "leiden": "gds.leiden.write",
+            "louvain": "gds.louvain.write",
+        }
+        algo_call = algo_map.get(algorithm)
+        if not algo_call:
+            raise ValueError(
+                f"Неизвестный алгоритм: {algorithm}. "
+                f"Доступны: {list(algo_map)}"
+            )
 
         query = f"""
             CALL {algo_call}(
@@ -93,7 +96,6 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
             YIELD communityCount, modularity
             RETURN communityCount, modularity
         """
-
         async with self._sm.session() as s:
             res = await s.run(query, {
                 "projection": projection_name,
@@ -120,10 +122,10 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
                  class_name: i.class_name
              }) AS members
         OPTIONAL MATCH (cs:CommunitySummary {community_id: cid})
-        RETURN cid AS community_id,
-               size(members) AS entity_count,
+        RETURN cid               AS community_id,
+               size(members)     AS entity_count,
                [m IN members | m.name][..10] AS key_entities,
-               cs.summary AS summary
+               cs.summary        AS summary
         ORDER BY entity_count DESC
         """
         async with self._sm.session() as s:
@@ -151,15 +153,35 @@ class Neo4jGDSAnalyticsService(IGraphAnalyticsService):
             target: other.name
         }) AS relations
         RETURN i.instance_id AS instance_id,
-               i.name AS name,
-               i.class_name AS class_name,
+               i.name        AS name,
+               i.class_name  AS class_name,
                relations
         """
         async with self._sm.session() as s:
             res = await s.run(query, {"cid": community_id})
             return await res.data()
 
-    # ============= PERSONALIZED PAGERANK =============
+    # ============= SUMMARY PERSISTENCE =============
+
+    async def save_community_summary(
+        self,
+        community_id: int,
+        summary: str,
+        key_entities: List[str],
+    ) -> None:
+        async with self._sm.session() as s:
+            await s.run("""
+                MERGE (cs:CommunitySummary {community_id: $cid})
+                SET cs.summary       = $summary,
+                    cs.key_entities   = $entities,
+                    cs.updated_at     = datetime()
+            """, {
+                "cid": community_id,
+                "summary": summary,
+                "entities": key_entities[:20],
+            })
+
+    # ============= PPR =============
 
     async def personalized_pagerank(
         self,
