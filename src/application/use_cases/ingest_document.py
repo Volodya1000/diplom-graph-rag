@@ -36,7 +36,10 @@ class IngestDocumentUseCase:
 
     # ------------------------------------------------------------------
     async def _ensure_tbox(self) -> None:
-        """Проверяет T-Box; если пуст — автоматически засеивает."""
+        """Проверяет T-Box и индексы; если пуст — засеивает."""
+        # Сначала индексы
+        await self.repo.ensure_indexes()
+
         current_classes = await self.repo.get_tbox_classes()
         current_relations = await self.repo.get_schema_relations()
 
@@ -47,18 +50,14 @@ class IngestDocumentUseCase:
             )
             return
 
-        logger.warning("⚠️ T-Box пуст! Автоматическая инициализация…")
-
+        logger.warning("⚠️ T-Box пуст — автоинициализация…")
         from src.domain.ontology.base_tbox import (
             BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS,
         )
-
         await self.repo.save_tbox_classes(BASE_TBOX_CLASSES)
         await self.repo.save_schema_relations(BASE_TBOX_RELATIONS)
-
         logger.info(
-            f"📚 Базовый T-Box создан: "
-            f"{len(BASE_TBOX_CLASSES)} классов, "
+            f"📚 T-Box создан: {len(BASE_TBOX_CLASSES)} классов, "
             f"{len(BASE_TBOX_RELATIONS)} отношений"
         )
 
@@ -66,7 +65,6 @@ class IngestDocumentUseCase:
     async def execute(self, file_path: Path) -> str:
         logger.info(f"📄 Start ingest: {file_path}")
 
-        # === ENSURE T-BOX ===
         await self._ensure_tbox()
 
         doc = DocumentNode(filename=file_path.name)
@@ -93,52 +91,50 @@ class IngestDocumentUseCase:
         # === EMBEDDINGS ===
         chunk_texts = [c.text for c in domain_chunks]
         embeddings = await self.embedder.embed_texts_batch(chunk_texts)
-        logger.info(f"🧠 Embeddings: {len(embeddings)}")
-
         for i, chunk in enumerate(domain_chunks):
             chunk.embedding = embeddings[i]
+        logger.info(f"🧠 Embeddings: {len(embeddings)}")
 
-        # === SAVE DOCUMENT + CHUNKS ===
+        # === SAVE DOC + CHUNKS ===
         await self.repo.save_document(doc)
-        logger.info("💾 Document saved")
-
         for chunk in domain_chunks:
             await self.repo.save_chunk(chunk)
-        logger.info(f"💾 Chunks saved: {len(domain_chunks)}")
+        logger.info(f"💾 Документ + {len(domain_chunks)} чанков сохранены")
 
-        doc_aggregate = DocumentAggregate(document=doc, chunks=domain_chunks)
-        doc_edges = doc_aggregate.build_edges()
-        await self.repo.save_edges(doc_edges)
-        logger.info(f"🔗 Document edges: {len(doc_edges)}")
+        doc_agg = DocumentAggregate(document=doc, chunks=domain_chunks)
+        await self.repo.save_edges(doc_agg.build_edges())
 
-        # === ENTITY + TRIPLE EXTRACTION ===
+        # === ENTITY + TRIPLE PIPELINE ===
+        # Кросс-чанковый реестр для одного документа
+        registry = self.er_svc.create_registry()
+
         total_entities = 0
         total_triples = 0
+        saved_instance_ids: set = set()
 
         for chunk in domain_chunks:
             logger.info(
-                f"🔍 Chunk {chunk.chunk_index} ({len(chunk.text)} chars)"
+                f"🔍 Чанк {chunk.chunk_index} ({len(chunk.text)} символов)"
             )
 
-            # Актуальный T-Box (растёт от чанка к чанку)
             current_classes = await self.repo.get_tbox_classes()
             current_relations = await self.repo.get_schema_relations()
 
-            # --- LLM: извлечение сущностей + троек ---
+            # --- LLM ---
             extraction: ExtractionResult = (
                 await self.llm.extract_entities_and_triples(
                     chunk.text, current_classes, current_relations,
                 )
             )
             logger.info(
-                f"🤖 Extracted: {len(extraction.entities)} entities, "
-                f"{len(extraction.triples)} triples"
+                f"🤖 Извлечено: {len(extraction.entities)} сущностей, "
+                f"{len(extraction.triples)} троек"
             )
 
             if not extraction.entities and not extraction.triples:
                 continue
 
-            # --- Entity Resolution + валидация троек ---
+            # --- Entity Resolution ---
             (
                 instances,
                 new_classes,
@@ -149,41 +145,31 @@ class IngestDocumentUseCase:
                 current_classes,
                 current_relations,
                 chunk.chunk_id,
+                registry,          # ← кросс-чанковый реестр
             )
 
             logger.info(
                 f"🧩 ER → instances={len(instances)}, "
                 f"triples={len(resolved_triples)}, "
                 f"new_classes={len(new_classes)}, "
-                f"new_relations={len(new_relations)}"
+                f"new_rels={len(new_relations)}"
             )
 
             # --- Сохранение новых элементов схемы ---
             if new_classes:
                 await self.repo.save_tbox_classes(new_classes)
-                logger.info(
-                    f"📚 Новые классы: "
-                    f"{[c.name for c in new_classes]}"
-                )
-
             if new_relations:
                 await self.repo.save_schema_relations(new_relations)
-                logger.info(
-                    f"📚 Новые отношения: "
-                    + ", ".join(
-                        f"{r.source_class}→{r.relation_name}→{r.target_class}"
-                        for r in new_relations
-                    )
-                )
 
-            # --- Сохранение экземпляров ---
+            # --- Сохранение экземпляров (без дублей) ---
             for inst in instances:
-                await self.repo.save_instance(inst)
-                inst_agg = InstanceAggregate(instance=inst)
-                inst_edges = inst_agg.build_edges()
-                await self.repo.save_edges(inst_edges)
+                if inst.instance_id not in saved_instance_ids:
+                    await self.repo.save_instance(inst)
+                    inst_agg = InstanceAggregate(instance=inst)
+                    await self.repo.save_edges(inst_agg.build_edges())
+                    saved_instance_ids.add(inst.instance_id)
 
-            # --- Сохранение семантических связей ---
+            # --- Сохранение троек ---
             for triple in resolved_triples:
                 await self.repo.save_instance_relation(triple)
 
@@ -191,7 +177,9 @@ class IngestDocumentUseCase:
             total_triples += len(resolved_triples)
 
         logger.info(
-            f"✅ Ingest finished: "
-            f"entities={total_entities}, triples={total_triples}"
+            f"✅ Ingest завершён: "
+            f"entities={total_entities}, "
+            f"triples={total_triples}, "
+            f"unique_nodes={len(saved_instance_ids)}"
         )
         return doc.doc_id

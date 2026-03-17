@@ -1,5 +1,5 @@
 """
-Доменные модели: узлы графа, онтология, DTO от LLM, рёбра.
+Доменные модели: узлы, онтология, DTO, рёбра.
 """
 
 import re
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 # ===================================================================
-# СТАТУСЫ ОНТОЛОГИИ
+# СТАТУСЫ
 # ===================================================================
 
 class SchemaStatus(str, Enum):
@@ -49,15 +49,13 @@ class ChunkNode(BaseModel):
 # ===================================================================
 
 class SchemaClass(BaseModel):
-    """Класс онтологии с поддержкой иерархии."""
     name: str
     status: SchemaStatus = SchemaStatus.DRAFT
     description: str = ""
-    parent: Optional[str] = None          # ← имя родительского класса
+    parent: Optional[str] = None
 
 
 class SchemaRelation(BaseModel):
-    """Допустимое отношение между классами онтологии."""
     source_class: str
     relation_name: str
     target_class: str
@@ -75,14 +73,12 @@ class RawExtractedEntity(BaseModel):
 
 
 class RawExtractedTriple(BaseModel):
-    """Тройка, извлечённая LLM из текста."""
-    subject: str       # имя сущности-субъекта
-    predicate: str     # имя отношения
-    object: str        # имя сущности-объекта
+    subject: str
+    predicate: str
+    object: str
 
 
 class ExtractionResult(BaseModel):
-    """Полный результат извлечения LLM: сущности + тройки."""
     entities: List[RawExtractedEntity] = Field(default_factory=list)
     triples: List[RawExtractedTriple] = Field(default_factory=list)
 
@@ -100,7 +96,6 @@ class InstanceNode(BaseModel):
 
 
 class ResolvedTriple(BaseModel):
-    """Тройка с разрешёнными instance_id (готовая к сохранению)."""
     source_instance_id: str
     relation_name: str
     target_instance_id: str
@@ -108,7 +103,7 @@ class ResolvedTriple(BaseModel):
 
 
 # ===================================================================
-# СТРУКТУРНЫЕ РЁБРА ГРАФА
+# СТРУКТУРНЫЕ РЁБРА
 # ===================================================================
 
 class GraphRelationType(str, Enum):
@@ -135,7 +130,6 @@ _RE_NON_ALNUM = re.compile(r"[^A-Za-z0-9_]")
 
 
 def normalize_predicate(predicate: str) -> str:
-    """Нормализует имя предиката → UPPER_SNAKE_CASE."""
     result = re.sub(r"[\s\-]+", "_", predicate.strip())
     result = _RE_NON_ALNUM.sub("", result)
     return result.upper() or "RELATED_TO"

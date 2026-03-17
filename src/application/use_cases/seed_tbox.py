@@ -1,8 +1,5 @@
 """
-Use Case: Инициализация базового T-Box (классы + отношения) в графе.
-
-    python main.py seed-tbox
-    python main.py seed-tbox --force --show
+Use Case: Инициализация базового T-Box + индексов.
 """
 
 import logging
@@ -18,54 +15,40 @@ class SeedTboxUseCase:
         self.repo = repo
 
     async def execute(self, force: bool = False) -> int:
-        """
-        Добавляет базовые классы и отношения T-Box в граф.
+        # ---- Индексы ----
+        await self.repo.ensure_indexes()
 
-        Returns:
-            Количество добавленных / обновлённых элементов.
-        """
         # ---- Классы ----
         current_classes = await self.repo.get_tbox_classes()
         existing_names = {c.name.lower() for c in current_classes}
 
         if force:
             classes_to_save = list(BASE_TBOX_CLASSES)
-            logger.info(
-                f"🔄 Force: перезапись {len(classes_to_save)} CORE-классов"
-            )
         else:
             classes_to_save = [
-                cls for cls in BASE_TBOX_CLASSES
-                if cls.name.lower() not in existing_names
+                c for c in BASE_TBOX_CLASSES
+                if c.name.lower() not in existing_names
             ]
 
         if classes_to_save:
             await self.repo.save_tbox_classes(classes_to_save)
             for cls in classes_to_save:
-                parent_info = f" (→ {cls.parent})" if cls.parent else ""
-                logger.info(f"  📌 {cls.name}{parent_info}: {cls.description}")
+                p = f" (→ {cls.parent})" if cls.parent else ""
+                logger.info(f"  📌 {cls.name}{p}: {cls.description}")
 
         # ---- Отношения ----
-        current_relations = await self.repo.get_schema_relations()
+        current_rels = await self.repo.get_schema_relations()
         existing_rel_keys = {
-            (
-                r.source_class.lower(),
-                r.relation_name.upper(),
-                r.target_class.lower(),
-            )
-            for r in current_relations
+            (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
+            for r in current_rels
         }
 
         if force:
             rels_to_save = list(BASE_TBOX_RELATIONS)
         else:
             rels_to_save = [
-                rel for rel in BASE_TBOX_RELATIONS
-                if (
-                    rel.source_class.lower(),
-                    rel.relation_name.upper(),
-                    rel.target_class.lower(),
-                )
+                r for r in BASE_TBOX_RELATIONS
+                if (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
                 not in existing_rel_keys
             ]
 
@@ -73,12 +56,11 @@ class SeedTboxUseCase:
             await self.repo.save_schema_relations(rels_to_save)
             for rel in rels_to_save:
                 logger.info(
-                    f"  🔗 {rel.source_class} → "
-                    f"{rel.relation_name} → {rel.target_class}"
+                    f"  🔗 {rel.source_class} → {rel.relation_name} → "
+                    f"{rel.target_class}"
                 )
 
         total = len(classes_to_save) + len(rels_to_save)
-
         if total == 0:
             logger.info("✅ T-Box уже содержит все базовые элементы")
         else:
@@ -86,5 +68,4 @@ class SeedTboxUseCase:
                 f"✅ T-Box: {len(classes_to_save)} классов + "
                 f"{len(rels_to_save)} отношений"
             )
-
         return total

@@ -8,6 +8,12 @@ from src.domain.models import (
 
 
 class IGraphRepository(ABC):
+    # === Инициализация ===
+    @abstractmethod
+    async def ensure_indexes(self) -> None:
+        """Создаёт векторные и прочие индексы (идемпотентно)."""
+        ...
+
     # === Узлы ===
     @abstractmethod
     async def save_document(self, document: DocumentNode) -> None: ...
@@ -22,32 +28,32 @@ class IGraphRepository(ABC):
     @abstractmethod
     async def save_edges(self, edges: List[GraphEdge]) -> None: ...
 
-    # === T-Box: классы (с иерархией) ===
+    # === T-Box: классы ===
     @abstractmethod
     async def get_tbox_classes(self) -> List[SchemaClass]: ...
 
     @abstractmethod
     async def save_tbox_classes(self, classes: List[SchemaClass]) -> None: ...
 
-    # === T-Box: допустимые отношения ===
+    # === T-Box: отношения ===
     @abstractmethod
     async def get_schema_relations(self) -> List[SchemaRelation]: ...
 
     @abstractmethod
     async def save_schema_relations(
-        self, relations: List[SchemaRelation]
+        self, relations: List[SchemaRelation],
     ) -> None: ...
 
-    # === Семантические связи между экземплярами ===
+    # === Семантические связи ===
     @abstractmethod
     async def save_instance_relation(
-        self, triple: ResolvedTriple
+        self, triple: ResolvedTriple,
     ) -> None: ...
 
-    # === Поиск кандидатов ===
+    # === Поиск ===
     @abstractmethod
     async def find_candidates_by_vector(
-        self, embedding: List[float], limit: int = 5
+        self, embedding: List[float], limit: int = 10,
     ) -> List[InstanceNode]: ...
 
     @abstractmethod

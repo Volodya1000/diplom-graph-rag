@@ -1,8 +1,10 @@
 """
 Neo4j-реализация IGraphRepository.
 
-Хранит: документы, чанки, экземпляры, T-Box (классы + отношения),
-        структурные и семантические рёбра, иерархию классов.
+Включает:
+  - Векторные индексы для Instance и Chunk
+  - Поиск кандидатов по cosine similarity
+  - SUBCLASS_OF, ALLOWED_RELATION, динамические рёбра
 """
 
 import re
@@ -11,6 +13,7 @@ from typing import List
 
 from neo4j import AsyncGraphDatabase
 from neo4j.time import DateTime as Neo4jDateTime
+
 
 from src.config.neo4j_settings import Neo4jSettings
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
@@ -31,6 +34,41 @@ class Neo4jRepository(IGraphRepository):
             settings.uri,
             auth=(settings.user, settings.password_value),
         )
+
+    # ====================== ИНДЕКСЫ ======================
+
+    async def ensure_indexes(self) -> None:
+        """Создаёт векторные индексы IF NOT EXISTS."""
+        dim = self._settings.embedding_dim
+        async with self.driver.session() as s:
+            # Индекс на эмбеддинги экземпляров (для Entity Resolution)
+            await s.run(f"""
+                CREATE VECTOR INDEX instance_embedding IF NOT EXISTS
+                FOR (n:Instance) ON (n.embedding)
+                OPTIONS {{indexConfig: {{
+                  `vector.dimensions`: {dim},
+                  `vector.similarity_function`: 'cosine'
+                }}}}
+            """)
+            # Индекс на эмбеддинги чанков (для RAG-поиска)
+            await s.run(f"""
+                CREATE VECTOR INDEX chunk_embedding IF NOT EXISTS
+                FOR (c:Chunk) ON (c.embedding)
+                OPTIONS {{indexConfig: {{
+                  `vector.dimensions`: {dim},
+                  `vector.similarity_function`: 'cosine'
+                }}}}
+            """)
+            # Текстовые индексы для быстрого lookup
+            await s.run("""
+                CREATE INDEX instance_name_idx IF NOT EXISTS
+                FOR (i:Instance) ON (i.name)
+            """)
+            await s.run("""
+                CREATE INDEX schema_class_name_idx IF NOT EXISTS
+                FOR (c:SchemaClass) ON (c.name)
+            """)
+        logger.info(f"📐 Индексы обеспечены (embedding_dim={dim})")
 
     # ====================== УЗЛЫ ======================
 
@@ -73,7 +111,7 @@ class Neo4jRepository(IGraphRepository):
         params = {
             "instance_id": instance.instance_id,
             "props": instance.model_dump(
-                exclude={"instance_id", "embedding"}
+                exclude={"instance_id", "embedding"},
             ),
         }
         if instance.embedding is not None:
@@ -147,7 +185,6 @@ class Neo4jRepository(IGraphRepository):
         ]
 
         async with self.driver.session() as s:
-            # 1. Upsert узлов
             await s.run(
                 """
                 UNWIND $batch AS row
@@ -160,8 +197,6 @@ class Neo4jRepository(IGraphRepository):
                 """,
                 batch=batch,
             )
-
-            # 2. Создание / обновление рёбер SUBCLASS_OF
             await s.run(
                 """
                 UNWIND $batch AS row
@@ -172,10 +207,6 @@ class Neo4jRepository(IGraphRepository):
                 """,
                 batch=batch,
             )
-
-            # 3. Починка «висячих» SUBCLASS_OF
-            #    (если ранее сохранённый класс указал parent,
-            #     которого тогда не было, а теперь он появился)
             await s.run(
                 """
                 MATCH (child:SchemaClass)
@@ -212,11 +243,10 @@ class Neo4jRepository(IGraphRepository):
             ]
 
     async def save_schema_relations(
-        self, relations: List[SchemaRelation]
+        self, relations: List[SchemaRelation],
     ) -> None:
         if not relations:
             return
-
         batch = [
             {
                 "source_class": r.source_class,
@@ -227,7 +257,6 @@ class Neo4jRepository(IGraphRepository):
             }
             for r in relations
         ]
-
         query = """
         UNWIND $batch AS row
         MATCH (src:SchemaClass {name: row.source_class})
@@ -243,10 +272,6 @@ class Neo4jRepository(IGraphRepository):
     # ====================== СЕМАНТИЧЕСКИЕ СВЯЗИ ======================
 
     async def save_instance_relation(self, triple: ResolvedTriple) -> None:
-        """
-        Сохраняет семантическую связь между двумя экземплярами.
-        Тип ребра — нормализованное имя предиката.
-        """
         safe_name = _SAFE_REL.sub("_", triple.relation_name).upper()
         if not safe_name:
             safe_name = "RELATED_TO"
@@ -267,35 +292,60 @@ class Neo4jRepository(IGraphRepository):
     # ====================== VECTOR SEARCH ======================
 
     async def find_candidates_by_vector(
-        self, embedding: List[float], limit: int = 5
+        self, embedding: List[float], limit: int = 10,
     ) -> List[InstanceNode]:
-        # TODO: подключить векторный индекс Neo4j
-        return []
-
-    async def get_document_by_filename(self, filename: str) -> List[DocumentNode]:
-        query = """
-        MATCH (d:Document {filename: $filename})
-        RETURN d.doc_id AS doc_id,
-               d.filename AS filename,
-               d.upload_date AS upload_date
         """
-        async with self.driver.session() as s:
-            res = await s.run(query, {"filename": filename})
-            data = await res.data()
-            result = []
-            for r in data:
-                upload_date = r["upload_date"]
-                # Преобразуем neo4j.time.DateTime в datetime.datetime
-                if isinstance(upload_date, Neo4jDateTime):
-                    upload_date = upload_date.to_native()
-                result.append(
-                    DocumentNode(
-                        doc_id=r["doc_id"],
-                        filename=r["filename"],
-                        upload_date=upload_date,
-                    )
+        Поиск ближайших Instance-нод по косинусному сходству.
+        Использует векторный индекс Neo4j.
+        """
+        threshold = self._settings.vector_search_threshold
+        query = """
+        CALL db.index.vector.queryNodes(
+            'instance_embedding', $limit, $embedding
+        )
+        YIELD node AS n, score
+        WHERE score >= $threshold
+        RETURN n.instance_id AS instance_id,
+               n.name        AS name,
+               n.class_name  AS class_name,
+               n.chunk_id    AS chunk_id,
+               score
+        ORDER BY score DESC
+        """
+        try:
+            async with self.driver.session() as s:
+                result = await s.run(query, {
+                    "embedding": embedding,
+                    "limit": limit,
+                    "threshold": threshold,
+                })
+                data = await result.data()
+
+            candidates = [
+                InstanceNode(
+                    instance_id=r["instance_id"],
+                    name=r["name"],
+                    class_name=r["class_name"],
+                    chunk_id=r["chunk_id"],
                 )
-            return result
+                for r in data
+            ]
+
+            if candidates:
+                logger.debug(
+                    f"🔎 Vector search: {len(candidates)} candidates "
+                    f"(top: «{candidates[0].name}» "
+                    f"score={data[0]['score']:.3f})"
+                )
+
+            return candidates
+
+        except Exception as e:
+            # Индекс ещё не создан или не заполнен
+            logger.warning(
+                f"⚠️ Vector search недоступен: {e.__class__.__name__}: {e}"
+            )
+            return []
 
     async def get_chunks_by_document(self, doc_id: str) -> List[ChunkNode]:
         query = """
@@ -373,3 +423,28 @@ class Neo4jRepository(IGraphRepository):
                 }
                 for r in data
             ]
+
+    async def get_document_by_filename(self, filename: str) -> List[DocumentNode]:
+        query = """
+        MATCH (d:Document {filename: $filename})
+        RETURN d.doc_id AS doc_id,
+               d.filename AS filename,
+               d.upload_date AS upload_date
+        """
+        async with self.driver.session() as s:
+            res = await s.run(query, {"filename": filename})
+            data = await res.data()
+            result = []
+            for r in data:
+                upload_date = r["upload_date"]
+                # Преобразуем neo4j.time.DateTime в datetime.datetime
+                if isinstance(upload_date, Neo4jDateTime):
+                    upload_date = upload_date.to_native()
+                result.append(
+                    DocumentNode(
+                        doc_id=r["doc_id"],
+                        filename=r["filename"],
+                        upload_date=upload_date,
+                    )
+                )
+            return result
