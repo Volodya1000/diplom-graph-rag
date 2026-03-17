@@ -17,10 +17,10 @@ from neo4j.time import DateTime as Neo4jDateTime
 
 from src.config.neo4j_settings import Neo4jSettings
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository
-from src.domain.models import (
-    DocumentNode, ChunkNode, SchemaClass, SchemaRelation,
-    InstanceNode, GraphEdge, ResolvedTriple,
-)
+from domain.graph_components.edges import GraphEdge
+from application.dtos.extraction_dtos import ResolvedTriple
+from domain.ontology.shema import SchemaClass, SchemaRelation
+from domain.graph_components.nodes import DocumentNode, ChunkNode, InstanceNode
 
 logger = logging.getLogger(__name__)
 

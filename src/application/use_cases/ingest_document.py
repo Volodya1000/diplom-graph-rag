@@ -5,7 +5,8 @@ Use Case: Полная индексация PDF → граф знаний.
 import logging
 from pathlib import Path
 
-from src.domain.models import DocumentNode, ChunkNode, ExtractionResult
+from domain.interfaces.llm.llm_client import ExtractionResult
+from domain.graph_components.nodes import DocumentNode, ChunkNode
 from src.domain.agregates.instance_agregate import InstanceAggregate
 from src.domain.agregates.document_agregate import DocumentAggregate
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository

@@ -1,8 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from src.domain.models import SchemaClass, SchemaRelation, ExtractionResult
+from pydantic import BaseModel, Field
 
+from application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
+from domain.ontology.shema import SchemaClass, SchemaRelation
+
+class ExtractionResult(BaseModel):
+    entities: List[RawExtractedEntity] = Field(default_factory=list)
+    triples: List[RawExtractedTriple] = Field(default_factory=list)
 
 class ILLMClient(ABC):
     @abstractmethod
@@ -23,3 +29,5 @@ class ILLMClient(ABC):
             known_entities: уже известные сущности из предыдущих чанков
         """
         ...
+
+

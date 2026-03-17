@@ -15,10 +15,9 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import AIMessage
 
 from src.domain.interfaces.llm.llm_client import ILLMClient
-from src.domain.models import (
-    SchemaClass, SchemaRelation,
-    ExtractionResult, RawExtractedEntity, RawExtractedTriple,
-)
+from application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
+from domain.interfaces.llm.llm_client import ExtractionResult
+from domain.ontology.shema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.config.ollama_settings import OllamaSettings
 from src.infrastructure.llm.prompts.entity_extraction import (

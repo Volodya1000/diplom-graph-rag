@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from src.domain.models import (
-    DocumentNode, ChunkNode, SchemaClass, SchemaRelation,
-    InstanceNode, GraphEdge, ResolvedTriple,
-)
+from domain.graph_components.edges import GraphEdge
+from application.dtos.extraction_dtos import ResolvedTriple
+from domain.ontology.shema import SchemaClass, SchemaRelation
+from domain.graph_components.nodes import DocumentNode, ChunkNode, InstanceNode
 
 
 class IGraphRepository(ABC):

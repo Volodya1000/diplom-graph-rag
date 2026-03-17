@@ -9,12 +9,11 @@ from typing import Dict, List, Optional, Tuple
 
 import Levenshtein as Lev
 
-from src.domain.models import (
-    ExtractionResult, InstanceNode,
-    SchemaClass, SchemaRelation, SchemaStatus,
-    ResolvedTriple, RawExtractedEntity,
-    normalize_predicate,
-)
+from domain.utils.normalize_predicate import normalize_predicate
+from application.dtos.extraction_dtos import RawExtractedEntity, ResolvedTriple
+from domain.interfaces.llm.llm_client import ExtractionResult
+from domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
+from domain.graph_components.nodes import InstanceNode
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.domain.interfaces.repositories.graph_repository import IGraphRepository

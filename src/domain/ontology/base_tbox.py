@@ -4,7 +4,7 @@
 Классы (с иерархией) + допустимые отношения.
 """
 
-from src.domain.models import SchemaClass, SchemaRelation, SchemaStatus
+from domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
 
 # ===================================================================
 # КЛАССЫ

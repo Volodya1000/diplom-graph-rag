@@ -12,7 +12,8 @@ from typing import List, Optional
 
 import Levenshtein
 
-from src.domain.models import RawExtractedEntity, InstanceNode
+from application.dtos.extraction_dtos import RawExtractedEntity
+from domain.graph_components.nodes import InstanceNode
 
 
 class EntityResolutionMatcher:

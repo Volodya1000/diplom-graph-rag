@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import List
 
-from domain.models import DocumentNode, ChunkNode, GraphEdge, GraphRelationType
+from domain.graph_components.edges import GraphRelationType, GraphEdge
+from domain.graph_components.nodes import DocumentNode, ChunkNode
 
 
 @dataclass
