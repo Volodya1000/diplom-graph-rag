@@ -1,5 +1,5 @@
 """
-LLM-клиент на базе Ollama: извлечение сущностей + троек.
+LLM-клиент: извлечение сущностей + троек с контекстом известных сущностей.
 """
 
 import re
@@ -28,7 +28,7 @@ from src.infrastructure.llm.prompts.entity_extraction import (
 logger = logging.getLogger(__name__)
 
 
-# ---- Внутренние DTO для PydanticOutputParser ----
+# ---- Внутренние DTO ----
 
 class _ParsedEntity(BaseModel):
     name: str
@@ -46,11 +46,11 @@ class _ExtractionOutput(BaseModel):
     triples: List[_ParsedTriple] = Field(default_factory=list)
 
 
-# ---- Утилита очистки вывода LLM ----
+# ---- Очистка ----
 
 _RE_THINK: Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
 _RE_CODE_BLOCK: Pattern[str] = re.compile(
-    r"```(?:json)?\s*", re.IGNORECASE
+    r"```(?:json)?\s*", re.IGNORECASE,
 )
 
 
@@ -91,21 +91,22 @@ class OllamaClient(ILLMClient):
         )
 
     # ------------------------------------------------------------------
+
     async def extract_entities_and_triples(
         self,
         text: str,
         tbox_classes: List[SchemaClass],
         tbox_relations: List[SchemaRelation],
+        known_entities: str = "",
     ) -> ExtractionResult:
 
-        # Форматируем схему для промпта
         validator = SchemaValidator(tbox_classes, tbox_relations)
         classes_str = validator.format_hierarchy_tree()
         relations_str = validator.format_relations()
+        known_str = known_entities if known_entities else "(пока нет)"
 
         logger.info(f"📨 LLM input: {len(text)} chars")
-        logger.debug(f"📨 Classes:\n{classes_str}")
-        logger.debug(f"📨 Relations:\n{relations_str}")
+        logger.debug(f"📨 Known entities:\n{known_str}")
 
         parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
         prompt: ChatPromptTemplate = get_entity_extraction_prompt()
@@ -124,6 +125,7 @@ class OllamaClient(ILLMClient):
             parsed: _ExtractionOutput = await chain.ainvoke({
                 "tbox_classes": classes_str,
                 "tbox_relations": relations_str,
+                "known_entities": known_str,
                 "text": text,
             })
 
@@ -147,7 +149,7 @@ class OllamaClient(ILLMClient):
             ]
 
             logger.info(
-                f"🤖 LLM result: {len(entities)} entities, "
+                f"🤖 LLM: {len(entities)} entities, "
                 f"{len(triples)} triples"
             )
 

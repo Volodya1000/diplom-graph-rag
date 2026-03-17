@@ -1,5 +1,5 @@
 """
-Use Case: Полная индексация PDF-документа в граф знаний.
+Use Case: Полная индексация PDF → граф знаний.
 """
 
 import logging
@@ -36,8 +36,6 @@ class IngestDocumentUseCase:
 
     # ------------------------------------------------------------------
     async def _ensure_tbox(self) -> None:
-        """Проверяет T-Box и индексы; если пуст — засеивает."""
-        # Сначала индексы
         await self.repo.ensure_indexes()
 
         current_classes = await self.repo.get_tbox_classes()
@@ -105,7 +103,6 @@ class IngestDocumentUseCase:
         await self.repo.save_edges(doc_agg.build_edges())
 
         # === ENTITY + TRIPLE PIPELINE ===
-        # Кросс-чанковый реестр для одного документа
         registry = self.er_svc.create_registry()
 
         total_entities = 0
@@ -114,16 +111,23 @@ class IngestDocumentUseCase:
 
         for chunk in domain_chunks:
             logger.info(
-                f"🔍 Чанк {chunk.chunk_index} ({len(chunk.text)} символов)"
+                f"🔍 Чанк {chunk.chunk_index} "
+                f"({len(chunk.text)} символов)"
             )
 
             current_classes = await self.repo.get_tbox_classes()
             current_relations = await self.repo.get_schema_relations()
 
-            # --- LLM ---
+            # ---- Контекст известных сущностей ----
+            known_entities_str = registry.format_known_entities()
+
+            # ---- LLM ----
             extraction: ExtractionResult = (
                 await self.llm.extract_entities_and_triples(
-                    chunk.text, current_classes, current_relations,
+                    text=chunk.text,
+                    tbox_classes=current_classes,
+                    tbox_relations=current_relations,
+                    known_entities=known_entities_str,
                 )
             )
             logger.info(
@@ -134,7 +138,7 @@ class IngestDocumentUseCase:
             if not extraction.entities and not extraction.triples:
                 continue
 
-            # --- Entity Resolution ---
+            # ---- Entity Resolution ----
             (
                 instances,
                 new_classes,
@@ -145,7 +149,7 @@ class IngestDocumentUseCase:
                 current_classes,
                 current_relations,
                 chunk.chunk_id,
-                registry,          # ← кросс-чанковый реестр
+                registry,
             )
 
             logger.info(
@@ -155,13 +159,12 @@ class IngestDocumentUseCase:
                 f"new_rels={len(new_relations)}"
             )
 
-            # --- Сохранение новых элементов схемы ---
+            # ---- Сохранение ----
             if new_classes:
                 await self.repo.save_tbox_classes(new_classes)
             if new_relations:
                 await self.repo.save_schema_relations(new_relations)
 
-            # --- Сохранение экземпляров (без дублей) ---
             for inst in instances:
                 if inst.instance_id not in saved_instance_ids:
                     await self.repo.save_instance(inst)
@@ -169,7 +172,6 @@ class IngestDocumentUseCase:
                     await self.repo.save_edges(inst_agg.build_edges())
                     saved_instance_ids.add(inst.instance_id)
 
-            # --- Сохранение троек ---
             for triple in resolved_triples:
                 await self.repo.save_instance_relation(triple)
 

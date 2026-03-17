@@ -11,9 +11,15 @@ class ILLMClient(ABC):
         text: str,
         tbox_classes: List[SchemaClass],
         tbox_relations: List[SchemaRelation],
+        known_entities: str = "",
     ) -> ExtractionResult:
         """
-        Извлекает сущности и тройки (subject-predicate-object) из текста
-        в рамках ограничений онтологии.
+        Извлекает сущности и тройки из текста.
+
+        Args:
+            text: текст чанка
+            tbox_classes: классы онтологии
+            tbox_relations: допустимые отношения
+            known_entities: уже известные сущности из предыдущих чанков
         """
         ...
