@@ -1,9 +1,5 @@
 """
 Единственное место создания ChatOllama.
-
-Устраняет дублирование конструктора в трёх клиентах.
-Фабрика — инфраструктурная деталь, доменные интерфейсы
-(ILLMClient, IAnswerGenerator, ISynonymResolver) о ней не знают.
 """
 
 import logging
@@ -18,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class ChatOllamaFactory:
-    """Фабрика для создания сконфигурированных ChatOllama."""
-
     def __init__(self, settings: OllamaSettings):
         self._settings = settings
         logger.info(
@@ -32,21 +26,13 @@ class ChatOllamaFactory:
         self,
         temperature: Optional[float] = None,
     ) -> BaseChatModel:
-        """ChatOllama с format='json' — для структурированных ответов."""
-        return self._build(
-            temperature=temperature,
-            json_mode=True,
-        )
+        return self._build(temperature=temperature, json_mode=True)
 
     def create_text(
         self,
         temperature: Optional[float] = None,
     ) -> BaseChatModel:
-        """ChatOllama без json — для свободного текста."""
-        return self._build(
-            temperature=temperature,
-            json_mode=False,
-        )
+        return self._build(temperature=temperature, json_mode=False)
 
     def _build(
         self,
@@ -54,14 +40,24 @@ class ChatOllamaFactory:
         json_mode: bool,
     ) -> ChatOllama:
         s = self._settings
-        kwargs = dict(
+        temp = temperature if temperature is not None else s.temperature
+
+        if json_mode:
+            return ChatOllama(
+                model=s.model_name,
+                base_url=s.base_url,
+                temperature=temp,
+                num_ctx=s.num_ctx,
+                client_kwargs={"headers": s.headers},
+                format="json",
+                verbose=False,
+            )
+
+        return ChatOllama(
             model=s.model_name,
             base_url=s.base_url,
-            temperature=temperature if temperature is not None else s.temperature,
+            temperature=temp,
             num_ctx=s.num_ctx,
             client_kwargs={"headers": s.headers},
             verbose=False,
         )
-        if json_mode:
-            kwargs["format"] = "json"
-        return ChatOllama(**kwargs)

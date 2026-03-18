@@ -1,7 +1,8 @@
 """LLM-резолвер синонимов."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, List,cast
+from tenacity._utils import LoggerProtocol
 
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
@@ -27,6 +28,7 @@ from src.infrastructure.llm.prompts.synonym_resolution import (
 )
 
 logger = logging.getLogger(__name__)
+_tenacity_logger = cast(LoggerProtocol, logger)
 
 
 class _SynonymGroupParsed(BaseModel):
@@ -48,10 +50,10 @@ class OllamaSynonymResolver(ISynonymResolver):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((Exception,)),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_tenacity_logger, logging.WARNING),
         reraise=True,
     )
-    async def _invoke_chain(self, chain, params: dict) -> _SynonymOutput:
+    async def _invoke_chain(self, chain, params: dict) -> _SynonymOutput:  # type: ignore[type-arg]
         return await chain.ainvoke(params)
 
     async def find_synonym_groups(

@@ -1,8 +1,5 @@
 """
 Общие утилиты очистки LLM-вывода.
-
-Используются как RunnableLambda в LangChain-цепочках.
-Убирают <think>-блоки, markdown-заборы, нормализуют пробелы.
 """
 
 import re
@@ -12,20 +9,14 @@ from langchain_core.messages import AIMessage
 
 logger = logging.getLogger(__name__)
 
-_RE_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
-_RE_CODE_BLOCK = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
+_RE_THINK: re.Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
+_RE_CODE_BLOCK: re.Pattern[str] = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
 
 
 def clean_json_output(message: AIMessage) -> str:
-    """
-    Очищает вывод LLM для JSON-парсинга.
-
-    Удаляет <think>-блоки, markdown code fences.
-    Возвращает строку, пригодную для PydanticOutputParser.
-    """
-    text = (
+    text: str = (
         message.content
-        if isinstance(message, AIMessage)
+        if isinstance(message, AIMessage) and isinstance(message.content, str)
         else str(message)
     )
     text = _RE_THINK.sub("", text)
@@ -37,14 +28,9 @@ def clean_json_output(message: AIMessage) -> str:
 
 
 def clean_text_output(message: AIMessage) -> str:
-    """
-    Очищает вывод LLM для текстовых ответов.
-
-    Удаляет <think>-блоки, сохраняет всё остальное.
-    """
-    text = (
+    text: str = (
         message.content
-        if isinstance(message, AIMessage)
+        if isinstance(message, AIMessage) and isinstance(message.content, str)
         else str(message)
     )
     return _RE_THINK.sub("", text).strip()
