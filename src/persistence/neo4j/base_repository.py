@@ -17,11 +17,12 @@ class Neo4jBaseRepository:
         return self._sm.settings
 
     async def _execute(
-        self, query: str, params: Optional[Dict[str, Any]] = None,
+            self, query: str, params: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Выполнить запрос без возврата данных."""
         async with self._sm.session() as s:
-            await s.run(query, params or {})
+            result = await s.run(query, params or {})
+            await result.consume()
 
     async def _fetch_all(
         self, query: str, params: Optional[Dict[str, Any]] = None,

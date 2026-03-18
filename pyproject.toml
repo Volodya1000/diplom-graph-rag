@@ -1,5 +1,5 @@
 [project]
-name = "gr-a3"
+name = "gr_a3"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -25,11 +25,32 @@ dependencies = [
 [dependency-groups]
 dev = [
     "git-filter-repo>=2.47.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
     "ruff>=0.15.6",
+    "testcontainers[neo4j]>=4.14.2",
     "ty>=0.0.23",
 ]
 
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (require Neo4j)",
+]
+pythonpath = ["."]
 
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
 "src/presentation/cli/*.py" = ["E402"]
+
+

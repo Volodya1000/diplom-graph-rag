@@ -3,7 +3,7 @@
 """
 
 import logging
-from neo4j import AsyncGraphDatabase, AsyncDriver, NotificationDisabledCategory
+from neo4j import AsyncGraphDatabase, AsyncDriver
 
 from src.config.neo4j_settings import Neo4jSettings
 
@@ -13,14 +13,15 @@ logger = logging.getLogger(__name__)
 class Neo4jSessionManager:
     def __init__(self, settings: Neo4jSettings):
         self.settings = settings
+
+        auth = None
+        if settings.password_value:
+            auth = (settings.user, settings.password_value)
+
         self._driver: AsyncDriver = AsyncGraphDatabase.driver(
             settings.uri,
-            auth=(settings.user, settings.password_value),
-            notifications_disabled_categories=[
-                NotificationDisabledCategory.UNRECOGNIZED,
-                NotificationDisabledCategory.HINT,
-                NotificationDisabledCategory.GENERIC,
-            ],
+            auth=auth,
+            notifications_min_severity="OFF",
         )
         logger.info(f"🔌 Neo4j driver created → {settings.uri}")
 
