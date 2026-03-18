@@ -103,7 +103,6 @@ class DocProcessor:
             doc_hash=doc_hash,
             doc_filename=doc_filename
         )
-
     def chunk_document(self, doc, override_filename: Optional[str] = None) -> List[ProcessedChunk]:
         chunker = HybridChunker(
             tokenizer=self.tokenizer,
@@ -115,19 +114,22 @@ class DocProcessor:
 
         for i, docling_chunk in enumerate(chunk_iter, start=1):
             raw_text = chunker.contextualize(chunk=docling_chunk)
-            #cleaned_text = TextCleaner.clean(raw_text)
-            cleaned_text=raw_text
+            cleaned_text = raw_text
 
-            if not cleaned_text or len(cleaned_text) < 15:
+            # Увеличенный порог: 50 символов вместо 15
+            if not cleaned_text or len(cleaned_text) < 50:
                 continue
 
             metadata = self._extract_chunk_metadata(docling_chunk, i, override_filename)
 
-            # Обогащение контекстом заголовков
+            # Обогащение: только первый заголовок, без полного пути
             if metadata.headings:
-                context_header = f"Документ: {' > '.join(metadata.headings)}\n"
-                if not cleaned_text.startswith(context_header):
-                    cleaned_text = context_header + "---\n" + cleaned_text
+                # Берём только ПОСЛЕДНИЙ (самый конкретный) заголовок
+                heading = metadata.headings[-1] if metadata.headings else ""
+                if heading and len(heading) < 80:
+                    context_header = f"Документ: {heading}\n---\n"
+                    if not cleaned_text.startswith(context_header):
+                        cleaned_text = context_header + cleaned_text
 
             processed_chunks.append(
                 ProcessedChunk(
@@ -138,5 +140,5 @@ class DocProcessor:
             )
 
         self.logger.info(
-            f"Document split into {len(processed_chunks)} chunks using filename: {override_filename or 'auto'}")
+            f"Document split into {len(processed_chunks)} chunks")
         return processed_chunks

@@ -9,7 +9,6 @@ from typing import List
 
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
-from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.value_objects.search_context import (
     RetrievalResult,
     RetrievedChunk,

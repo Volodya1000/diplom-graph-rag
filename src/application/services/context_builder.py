@@ -5,7 +5,6 @@
 → единая строка контекста.
 """
 
-from typing import Optional
 
 from src.domain.value_objects.search_context import RetrievalResult
 

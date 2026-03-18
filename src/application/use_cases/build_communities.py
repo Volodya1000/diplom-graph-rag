@@ -63,12 +63,14 @@ class BuildCommunitiesUseCase:
         communities = await self._analytics.get_communities()
         summaries_count = 0
 
-        for comm in communities:
-            if comm.entity_count < min_community_size:
-                continue
-            if comm.summary and not force:
-                continue
+        # В цикле генерации summaries:
+        eligible = [
+            c for c in communities
+            if c.entity_count >= min_community_size
+            and (force or not c.summary)
+        ]
 
+        for i, comm in enumerate(eligible, 1):
             members = await self._analytics.get_community_members(
                 comm.community_id,
             )
@@ -91,9 +93,9 @@ class BuildCommunitiesUseCase:
             summaries_count += 1
 
             logger.info(
-                f"📝 Community #{comm.community_id} "
+                f"📝 [{i}/{len(eligible)}] Community #{comm.community_id} "
                 f"({comm.entity_count} entities): "
-                f"{summary[:80]}…"
+                f"{summary[:60]}…"
             )
 
         result = {

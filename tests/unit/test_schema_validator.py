@@ -8,8 +8,6 @@ Unit: SchemaValidator — иерархия классов и валидация 
   - Несуществующее отношение отклоняется
 """
 
-import pytest
-from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
 from src.domain.ontology.schema_validator import SchemaValidator
 
 

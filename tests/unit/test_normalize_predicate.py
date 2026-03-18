@@ -4,7 +4,6 @@ Unit: нормализация предикатов.
 Поведение: строка с пробелами, дефисами, спецсимволами → UPPER_SNAKE_CASE.
 """
 
-import pytest
 from src.domain.utils.normalize_predicate import normalize_predicate
 
 

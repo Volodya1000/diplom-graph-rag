@@ -5,7 +5,6 @@
 """
 
 import logging
-from typing import List
 
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository

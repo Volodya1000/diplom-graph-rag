@@ -197,3 +197,45 @@ class TestNoMatch:
         result = matcher.find_best_match(target, candidates)
 
         assert result is None
+
+class TestDateProtection:
+    """Даты не мержатся через vector search — только точное совпадение."""
+
+    def test_exact_same_date_matches(self, matcher):
+        candidates = [
+            InstanceNode(
+                instance_id="id-d1", name="2020 год",
+                class_name="Date", chunk_id="c1",
+            ),
+        ]
+        target = RawExtractedEntity(name="2020 год", type="Date")
+
+        result = matcher.find_best_match(target, candidates)
+
+        assert result == "id-d1"
+
+    def test_similar_dates_do_not_merge(self, matcher):
+        candidates = [
+            InstanceNode(
+                instance_id="id-d1", name="2010 год",
+                class_name="Date", chunk_id="c1",
+            ),
+        ]
+        target = RawExtractedEntity(name="2020 год", type="Date")
+
+        result = matcher.find_best_match(target, candidates)
+
+        assert result is None
+
+    def test_date_with_different_format_no_merge(self, matcher):
+        candidates = [
+            InstanceNode(
+                instance_id="id-d1", name="2019-2020 годы",
+                class_name="Date", chunk_id="c1",
+            ),
+        ]
+        target = RawExtractedEntity(name="2020 год", type="Date")
+
+        result = matcher.find_best_match(target, candidates)
+
+        assert result is None

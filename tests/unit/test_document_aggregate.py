@@ -7,7 +7,6 @@ Unit: DocumentAggregate — построение рёбер документа.
   - Один чанк — нет NEXT/PREV
 """
 
-import pytest
 from src.domain.graph_components.nodes import DocumentNode, ChunkNode
 from src.domain.graph_components.edges import GraphRelationType
 from src.domain.agregates.document_agregate import DocumentAggregate

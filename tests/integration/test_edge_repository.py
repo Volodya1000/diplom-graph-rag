@@ -29,7 +29,6 @@ class TestEdgeCreation:
         await edge_repo.save_edges(edges)
 
         # Проверяем отдельным запросом
-        from src.persistence.neo4j.base_repository import Neo4jBaseRepository
         data = await edge_repo._fetch_all("""
             MATCH (d:Document {doc_id: 'd1'})-[:HAS_CHUNK]->(c:Chunk {chunk_id: 'c1'})
             RETURN d.doc_id AS doc_id, c.chunk_id AS chunk_id

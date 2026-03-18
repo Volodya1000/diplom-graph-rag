@@ -6,7 +6,7 @@ RetrievalResult. Стратегии компонуются (Hybrid = Local + Glo
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 
 from src.domain.value_objects.search_context import RetrievalResult
 

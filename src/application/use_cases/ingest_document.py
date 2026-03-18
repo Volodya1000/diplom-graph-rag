@@ -1,8 +1,14 @@
 """
-Дополнение: post-processing с synonym resolution.
+Use Case: Полная индексация PDF → граф знаний.
+
+Улучшения логирования:
+  - Прогресс чанков: chunk 5/66
+  - Timing: общее и per-chunk
+  - Итоговая сводка
 """
 
 import logging
+import time
 from pathlib import Path
 
 from src.domain.interfaces.llm.llm_client import ILLMClient, ExtractionResult
@@ -34,7 +40,7 @@ class IngestDocumentUseCase:
         embedder: IEmbeddingService,
         llm: ILLMClient,
         er_svc: EntityResolutionOrchestrator,
-        post_processor: PostProcessingService,    # ← НОВОЕ
+        post_processor: PostProcessingService,
     ):
         self.parser = parser
         self.schema_repo = schema_repo
@@ -63,15 +69,21 @@ class IngestDocumentUseCase:
         file_path: Path,
         skip_synonyms: bool = False,
     ) -> str:
+        t_start = time.monotonic()
         logger.info(f"📄 Start ingest: {file_path}")
         await self._ensure_tbox()
 
         doc = DocumentNode(filename=file_path.name)
 
         # === PARSE ===
+        t_parse = time.monotonic()
         dl_doc = self.parser.parse_pdf(str(file_path))
         processed_chunks = self.parser.chunk_document(dl_doc)
-        logger.info(f"✂️ Chunks: {len(processed_chunks)}")
+        total_chunks = len(processed_chunks)
+        logger.info(
+            f"✂️ Parse + chunk: {total_chunks} chunks "
+            f"({time.monotonic() - t_parse:.1f}s)"
+        )
 
         domain_chunks = [
             ChunkNode(
@@ -86,26 +98,34 @@ class IngestDocumentUseCase:
         ]
 
         # === EMBEDDINGS ===
+        t_embed = time.monotonic()
         embeddings = await self.embedder.embed_texts_batch(
             [c.text for c in domain_chunks],
         )
         for i, chunk in enumerate(domain_chunks):
             chunk.embedding = embeddings[i]
+        logger.info(
+            f"🧠 Embeddings: {len(embeddings)} "
+            f"({time.monotonic() - t_embed:.1f}s)"
+        )
 
         # === SAVE DOC + CHUNKS ===
         await self.doc_repo.save_document(doc)
         for chunk in domain_chunks:
             await self.doc_repo.save_chunk(chunk)
-
         doc_agg = DocumentAggregate(document=doc, chunks=domain_chunks)
         await self.edge_repo.save_edges(doc_agg.build_edges())
+        logger.info(f"💾 Документ + {total_chunks} чанков сохранены")
 
         # === ENTITY + TRIPLE PIPELINE ===
         registry = self.er_svc.create_registry()
         total_entities = total_triples = 0
         saved_instance_ids: set = set()
+        t_pipeline = time.monotonic()
 
-        for chunk in domain_chunks:
+        for idx, chunk in enumerate(domain_chunks, 1):
+            t_chunk = time.monotonic()
+
             current_classes = await self.schema_repo.get_tbox_classes()
             current_relations = await self.schema_repo.get_schema_relations()
 
@@ -119,6 +139,10 @@ class IngestDocumentUseCase:
             )
 
             if not extraction.entities and not extraction.triples:
+                logger.info(
+                    f"  [{idx}/{total_chunks}] Чанк {chunk.chunk_index}: "
+                    f"пусто ({time.monotonic() - t_chunk:.1f}s)"
+                )
                 continue
 
             (
@@ -146,13 +170,25 @@ class IngestDocumentUseCase:
             total_entities += len(instances)
             total_triples += len(resolved_triples)
 
+            chunk_time = time.monotonic() - t_chunk
+            logger.info(
+                f"  [{idx}/{total_chunks}] Чанк {chunk.chunk_index}: "
+                f"+{len(instances)} entities, "
+                f"+{len(resolved_triples)} triples "
+                f"({chunk_time:.1f}s)"
+            )
+
+        pipeline_time = time.monotonic() - t_pipeline
         logger.info(
-            f"📊 Extraction done: entities={total_entities}, "
-            f"triples={total_triples}"
+            f"📊 Pipeline done: {total_entities} entities, "
+            f"{total_triples} triples, "
+            f"{len(saved_instance_ids)} unique nodes "
+            f"({pipeline_time:.1f}s)"
         )
 
-        # === POST-PROCESSING: SYNONYM RESOLUTION ===
+        # === POST-PROCESSING ===
         if not skip_synonyms and total_entities > 1:
+            t_syn = time.monotonic()
             logger.info("🔍 Post-processing: synonym resolution…")
             syn_result = await self.post_processor.resolve_synonyms(
                 doc_id=doc.doc_id,
@@ -160,12 +196,18 @@ class IngestDocumentUseCase:
             )
             logger.info(
                 f"🔗 Synonyms: merged={syn_result.merged_count}, "
-                f"groups={len(syn_result.groups)}"
+                f"groups={len(syn_result.groups)} "
+                f"({time.monotonic() - t_syn:.1f}s)"
             )
 
+        total_time = time.monotonic() - t_start
         logger.info(
-            f"✅ Ingest complete: doc_id={doc.doc_id}, "
-            f"entities={total_entities}, triples={total_triples}, "
-            f"unique={len(saved_instance_ids)}"
+            f"✅ Ingest complete: doc_id={doc.doc_id}\n"
+            f"   📄 File: {file_path.name}\n"
+            f"   ✂️  Chunks: {total_chunks}\n"
+            f"   🧩 Entities: {total_entities} (unique: {len(saved_instance_ids)})\n"
+            f"   🔗 Triples: {total_triples}\n"
+            f"   ⏱️  Total: {total_time:.1f}s "
+            f"(avg {total_time / max(total_chunks, 1):.1f}s/chunk)"
         )
         return doc.doc_id

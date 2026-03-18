@@ -7,7 +7,6 @@ Unit: InstanceAggregate — INSTANCE_OF и MENTIONED_IN рёбра.
   - MENTIONED_IN ведёт к chunk_id
 """
 
-import pytest
 from src.domain.graph_components.nodes import InstanceNode
 from src.domain.graph_components.edges import GraphRelationType
 from src.domain.agregates.instance_agregate import InstanceAggregate

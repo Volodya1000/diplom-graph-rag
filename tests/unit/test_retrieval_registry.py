@@ -7,7 +7,6 @@ Unit: RetrievalStrategyRegistry — выбор стратегии по SearchMod
 """
 
 import pytest
-from unittest.mock import AsyncMock
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
 from src.domain.value_objects.search_context import SearchMode
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy

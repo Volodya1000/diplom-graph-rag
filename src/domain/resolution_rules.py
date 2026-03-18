@@ -1,11 +1,5 @@
 """
-Гибридный Entity Resolution: Левенштейн + косинусное сходство.
-
-Логика:
-  1. Точное совпадение имени → безусловный match
-  2. Очень высокий Левенштейн (≥0.95) → match (опечатки)
-  3. Левенштейн ≥ порога + совпадение типа → match
-  4. Иначе → нет совпадения
+Entity Resolution с защитой дат от ложного мержа.
 """
 
 from typing import List, Optional
@@ -14,6 +8,9 @@ import Levenshtein
 
 from src.application.dtos.extraction_dtos import RawExtractedEntity
 from src.domain.graph_components.nodes import InstanceNode
+
+# Типы, для которых vector search НЕ должен работать
+_NO_VECTOR_MERGE_TYPES = {"date"}
 
 
 class EntityResolutionMatcher:
@@ -25,8 +22,6 @@ class EntityResolutionMatcher:
         self.levenshtein_threshold = levenshtein_threshold
         self.strict_name_threshold = strict_name_threshold
 
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _name_similarity(a: str, b: str) -> float:
         a_clean = a.strip().lower()
@@ -37,24 +32,21 @@ class EntityResolutionMatcher:
         max_len = max(len(a_clean), len(b_clean))
         return 1.0 - (dist / max_len)
 
-    # ------------------------------------------------------------------
-
     def find_best_match(
         self,
         target: RawExtractedEntity,
         candidates: List[InstanceNode],
     ) -> Optional[str]:
-        """
-        Ищет лучшее совпадение среди кандидатов.
-
-        Кандидаты уже отфильтрованы по векторному сходству
-        (приходят из find_candidates_by_vector).
-
-        Returns:
-            instance_id лучшего совпадения или None.
-        """
         target_name = target.name.strip().lower()
         target_type = target.type.strip().lower()
+
+        # Даты НЕ мержатся через vector search —
+        # только точное совпадение строки
+        if target_type in _NO_VECTOR_MERGE_TYPES:
+            for cand in candidates:
+                if cand.name.strip().lower() == target_name:
+                    return cand.instance_id
+            return None
 
         best_id: Optional[str] = None
         best_score: float = 0.0
@@ -65,19 +57,18 @@ class EntityResolutionMatcher:
 
             sim = self._name_similarity(target_name, cand_name)
 
-            # Правило 1: Точное совпадение имени → безусловный match
+            # Правило 1: Точное совпадение
             if target_name == cand_name:
                 return cand.instance_id
 
-            # Правило 2: Очень высокий Левенштейн → match
-            # (даже если тип другой — это скорее дрифт LLM)
+            # Правило 2: Очень высокий Левенштейн
             if sim >= self.strict_name_threshold:
                 if sim > best_score:
                     best_score = sim
                     best_id = cand.instance_id
                 continue
 
-            # Правило 3: Высокий Левенштейн + совпадение типа → match
+            # Правило 3: Высокий Левенштейн + совпадение типа
             if sim >= self.levenshtein_threshold and target_type == cand_type:
                 if sim > best_score:
                     best_score = sim

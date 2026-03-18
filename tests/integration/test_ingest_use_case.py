@@ -12,7 +12,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
 
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode, InstanceNode
 from src.domain.ontology.shema import SchemaClass, SchemaStatus
 from src.domain.interfaces.llm.llm_client import ExtractionResult
 from src.application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
