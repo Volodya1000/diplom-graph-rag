@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, provide
 
-from config.extraction_settings import ExtractionSettings
+from src.config.extraction_settings import ExtractionSettings
 from src.config.neo4j_settings import Neo4jSettings
 from src.config.ollama_settings import OllamaSettings
 from src.config.base import AppConfig

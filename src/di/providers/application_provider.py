@@ -1,5 +1,7 @@
 from dishka import Provider, Scope, provide
 
+from src.application.use_cases.export_ontology import ExportOntologyUseCase
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.application.services.entity_resolution_service import (
     EntityResolutionOrchestrator,
@@ -18,3 +20,10 @@ class ApplicationProvider(Provider):
     post_processor = provide(PostProcessingService, scope=Scope.APP)
     ingest_use_case = provide(IngestDocumentUseCase, scope=Scope.APP)
     seed_tbox_use_case = provide(SeedTboxUseCase, scope=Scope.APP)
+
+    @provide(scope=Scope.APP)
+    def provide_export_ontology_use_case(
+            self,
+            schema_repo: ISchemaRepository,
+    ) -> ExportOntologyUseCase:
+        return ExportOntologyUseCase(schema_repo)
