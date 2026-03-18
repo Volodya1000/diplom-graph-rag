@@ -1,7 +1,7 @@
 """T-Box: классы онтологии, отношения, индексы."""
 
 import logging
-from typing import List
+from typing import List, Dict
 
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.ontology.shema import SchemaClass, SchemaRelation
@@ -137,3 +137,11 @@ class Neo4jSchemaRepository(Neo4jBaseRepository, ISchemaRepository):
                           r.description = row.description
             ON MATCH  SET r.description = row.description
         """, {"batch": batch})
+
+    async def get_class_usage_counts(self) -> Dict[str, int]:
+        data = await self._fetch_all("""
+            MATCH (sc:SchemaClass)
+            OPTIONAL MATCH (i:Instance)-[:INSTANCE_OF]->(sc)
+            RETURN sc.name AS name, COUNT(i) AS usage
+        """)
+        return {r["name"]: r["usage"] for r in data}

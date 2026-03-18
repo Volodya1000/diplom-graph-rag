@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict
 
 from src.domain.ontology.shema import SchemaClass, SchemaRelation
 
@@ -23,3 +23,8 @@ class ISchemaRepository(ABC):
     async def save_schema_relations(
         self, relations: List[SchemaRelation],
     ) -> None: ...
+
+    @abstractmethod
+    async def get_class_usage_counts(self) -> Dict[str, int]:
+        """Сколько экземпляров использует каждый класс (для запрета удаления)."""
+        ...

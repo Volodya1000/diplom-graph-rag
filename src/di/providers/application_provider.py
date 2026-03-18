@@ -1,6 +1,7 @@
 from dishka import Provider, Scope, provide
 
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
+from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.application.services.entity_resolution_service import (
@@ -27,3 +28,9 @@ class ApplicationProvider(Provider):
             schema_repo: ISchemaRepository,
     ) -> ExportOntologyUseCase:
         return ExportOntologyUseCase(schema_repo)
+
+    @provide(scope=Scope.APP)
+    def provide_update_ontology_use_case(
+        self, schema_repo: ISchemaRepository
+    ) -> UpdateOntologyUseCase:
+        return UpdateOntologyUseCase(schema_repo)

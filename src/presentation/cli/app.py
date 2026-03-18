@@ -19,3 +19,4 @@ from src.presentation.cli.doc_info_cmd import register           # noqa
 from src.presentation.cli.ask_cmd import register                # noqa
 from src.presentation.cli.build_communities_cmd import register  # noqa
 from src.presentation.cli.export_ontology_cmd import register  # noqa
+from src.presentation.cli.update_ontology_cmd import register  # noqa
