@@ -9,11 +9,10 @@ Unit: DocumentAggregate — построение рёбер документа.
 
 from src.domain.graph_components.nodes import DocumentNode, ChunkNode
 from src.domain.graph_components.edges import GraphRelationType
-from src.domain.agregates.document_agregate import DocumentAggregate
+from src.domain.aggregates.document_agregate import DocumentAggregate
 
 
 class TestDocumentAggregateEdges:
-
     def test_single_chunk_produces_one_has_chunk_edge(self):
         doc = DocumentNode(doc_id="doc-1", filename="test.pdf")
         chunks = [

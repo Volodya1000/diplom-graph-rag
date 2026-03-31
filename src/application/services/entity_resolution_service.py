@@ -13,7 +13,7 @@ import Levenshtein as Lev
 from src.domain.utils.normalize_predicate import normalize_predicate
 from src.application.dtos.extraction_dtos import RawExtractedEntity, ResolvedTriple
 from src.domain.interfaces.llm.llm_client import ExtractionResult
-from src.domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaStatus, SchemaClass, SchemaRelation
 from src.domain.graph_components.nodes import InstanceNode
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.ontology.schema_validator import SchemaValidator
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # =====================================================================
 #  Кросс-чанковый реестр (без изменений)
 # =====================================================================
+
 
 class EntityRegistry:
     def __init__(self, levenshtein_threshold: float = 0.85):
@@ -72,10 +73,11 @@ class EntityRegistry:
 #  Оркестратор
 # =====================================================================
 
+
 class EntityResolutionOrchestrator:
     def __init__(
         self,
-        instance_repo: IInstanceRepository,       # ← ISP: только то, что нужно
+        instance_repo: IInstanceRepository,  # ← ISP: только то, что нужно
         embedder: IEmbeddingService,
         matcher: EntityResolutionMatcher,
     ):
@@ -180,7 +182,9 @@ class EntityResolutionOrchestrator:
                 continue
 
             if not validator.is_relation_allowed(
-                src_inst.class_name, predicate, tgt_inst.class_name,
+                src_inst.class_name,
+                predicate,
+                tgt_inst.class_name,
             ):
                 rel_key = (
                     src_inst.class_name.lower(),

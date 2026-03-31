@@ -1,11 +1,9 @@
-"""
-Базовый класс для Neo4j-репозиториев.
-Убирает дублирование session-boilerplate.
-"""
-
-from typing import Any, Dict, List, Optional
-
+import logging
+from typing import Any, Dict, List, Optional, Union
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
+from .queries.base import Neo4jQuery
+
+logger = logging.getLogger(__name__)
 
 
 class Neo4jBaseRepository:
@@ -16,18 +14,34 @@ class Neo4jBaseRepository:
     def _settings(self):
         return self._sm.settings
 
+    def _log_query_execution(self, query_obj: Neo4jQuery) -> None:
+        params = query_obj.get_params()
+        logger.debug(f"Executing {query_obj} | params keys: {list(params.keys())}")
+
     async def _execute(
-            self, query: str, params: Optional[Dict[str, Any]] = None,
+        self,
+        query: Union[str, Neo4jQuery],
+        params: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Выполнить запрос без возврата данных."""
+        if isinstance(query, Neo4jQuery):
+            self._log_query_execution(query)
+            q, p = query.get_query(), query.get_params()
+        else:
+            q, p = query, params or {}
         async with self._sm.session() as s:
-            result = await s.run(query, params or {})
+            result = await s.run(q, p)
             await result.consume()
 
     async def _fetch_all(
-        self, query: str, params: Optional[Dict[str, Any]] = None,
+        self,
+        query: Union[str, Neo4jQuery],
+        params: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Выполнить запрос и вернуть все записи."""
+        if isinstance(query, Neo4jQuery):
+            self._log_query_execution(query)
+            q, p = query.get_query(), query.get_params()
+        else:
+            q, p = query, params or {}
         async with self._sm.session() as s:
-            result = await s.run(query, params or {})
+            result = await s.run(q, p)
             return await result.data()

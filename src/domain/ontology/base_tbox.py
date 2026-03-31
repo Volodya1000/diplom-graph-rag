@@ -4,7 +4,7 @@
 Классы (с иерархией) + допустимые отношения.
 """
 
-from src.domain.ontology.shema import SchemaStatus, SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaStatus, SchemaClass, SchemaRelation
 # ===================================================================
 # КЛАССЫ
 # ===================================================================
@@ -51,7 +51,6 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         status=SchemaStatus.CORE,
         description="Животные: реальные или персонажи-животные",
     ),
-
     # ---- Подклассы ----
     SchemaClass(
         name="GovernmentOrg",
@@ -114,7 +113,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Человек знает другого человека",
     ),
-
     # --- Organization ---
     SchemaRelation(
         source_class="Organization",
@@ -137,7 +135,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Организация — часть другой организации",
     ),
-
     # --- Event ---
     SchemaRelation(
         source_class="Event",
@@ -160,7 +157,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Событие включает / касается человека",
     ),
-
     # --- Product ---
     SchemaRelation(
         source_class="Product",
@@ -183,7 +179,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Продукт / объект находится в месте",
     ),
-
     # --- Concept ---
     SchemaRelation(
         source_class="Concept",
@@ -192,7 +187,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Концепция связана с другой концепцией",
     ),
-
     # --- Animal ---
     SchemaRelation(
         source_class="Animal",
@@ -222,7 +216,6 @@ BASE_TBOX_RELATIONS: list[SchemaRelation] = [
         status=SchemaStatus.CORE,
         description="Животное взаимодействует с другим животным",
     ),
-
     # --- Универсальные ---
     SchemaRelation(
         source_class="Person",

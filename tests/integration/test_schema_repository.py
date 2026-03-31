@@ -5,14 +5,13 @@ Happy path + граничные случаи, которые нельзя про
 """
 
 import pytest
-from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
+from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
 
 pytestmark = pytest.mark.integration
 
 
 class TestSchemaIndexes:
-
     async def test_ensure_indexes_is_idempotent(self, schema_repo):
         # Двойной вызов не должен падать
         await schema_repo.ensure_indexes()
@@ -23,7 +22,6 @@ class TestSchemaIndexes:
 
 
 class TestTBoxClasses:
-
     async def test_save_and_retrieve_classes(self, schema_repo):
         classes = [
             SchemaClass(name="Person", status=SchemaStatus.CORE, description="People"),
@@ -41,7 +39,9 @@ class TestTBoxClasses:
     async def test_save_class_with_parent_creates_subclass_edge(self, schema_repo):
         classes = [
             SchemaClass(name="Organization", status=SchemaStatus.CORE),
-            SchemaClass(name="Company", status=SchemaStatus.CORE, parent="Organization"),
+            SchemaClass(
+                name="Company", status=SchemaStatus.CORE, parent="Organization"
+            ),
         ]
 
         await schema_repo.save_tbox_classes(classes)
@@ -57,12 +57,16 @@ class TestTBoxClasses:
         assert result == []
 
     async def test_duplicate_save_updates_description(self, schema_repo):
-        await schema_repo.save_tbox_classes([
-            SchemaClass(name="Person", status=SchemaStatus.CORE, description="v1"),
-        ])
-        await schema_repo.save_tbox_classes([
-            SchemaClass(name="Person", status=SchemaStatus.CORE, description="v2"),
-        ])
+        await schema_repo.save_tbox_classes(
+            [
+                SchemaClass(name="Person", status=SchemaStatus.CORE, description="v1"),
+            ]
+        )
+        await schema_repo.save_tbox_classes(
+            [
+                SchemaClass(name="Person", status=SchemaStatus.CORE, description="v2"),
+            ]
+        )
 
         result = await schema_repo.get_tbox_classes()
         assert len(result) == 1
@@ -70,16 +74,19 @@ class TestTBoxClasses:
 
 
 class TestSchemaRelations:
-
     async def test_save_and_retrieve_relations(self, schema_repo):
-        await schema_repo.save_tbox_classes([
-            SchemaClass(name="Person", status=SchemaStatus.CORE),
-            SchemaClass(name="Organization", status=SchemaStatus.CORE),
-        ])
+        await schema_repo.save_tbox_classes(
+            [
+                SchemaClass(name="Person", status=SchemaStatus.CORE),
+                SchemaClass(name="Organization", status=SchemaStatus.CORE),
+            ]
+        )
         relations = [
             SchemaRelation(
-                source_class="Person", relation_name="WORKS_AT",
-                target_class="Organization", status=SchemaStatus.CORE,
+                source_class="Person",
+                relation_name="WORKS_AT",
+                target_class="Organization",
+                status=SchemaStatus.CORE,
             ),
         ]
 
@@ -91,12 +98,16 @@ class TestSchemaRelations:
         assert result[0].source_class == "Person"
         assert result[0].target_class == "Organization"
 
-    async def test_relation_without_matching_classes_is_silently_skipped(self, schema_repo):
+    async def test_relation_without_matching_classes_is_silently_skipped(
+        self, schema_repo
+    ):
         # Нет классов в БД — MATCH не найдёт ничего
         relations = [
             SchemaRelation(
-                source_class="Phantom", relation_name="DOES",
-                target_class="Nothing", status=SchemaStatus.DRAFT,
+                source_class="Phantom",
+                relation_name="DOES",
+                target_class="Nothing",
+                status=SchemaStatus.DRAFT,
             ),
         ]
 

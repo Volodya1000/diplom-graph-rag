@@ -4,11 +4,13 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from src.application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
-from src.domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
+
 
 class ExtractionResult(BaseModel):
     entities: List[RawExtractedEntity] = Field(default_factory=list)
     triples: List[RawExtractedTriple] = Field(default_factory=list)
+
 
 class ILLMClient(ABC):
     @abstractmethod
@@ -29,5 +31,3 @@ class ILLMClient(ABC):
             known_entities: уже известные сущности из предыдущих чанков
         """
         ...
-
-

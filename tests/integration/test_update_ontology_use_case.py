@@ -1,29 +1,34 @@
 """
 Integration: полный цикл импорта TTL → валидация → сохранение в Neo4j.
 """
+
 import pytest
 from pathlib import Path
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
-from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
+from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
 
 @pytest.mark.integration
 class TestUpdateOntologyUseCase:
-    async def test_valid_ttl_imports_and_merges(
-        self, schema_repo, tmp_path: Path
-    ):
+    async def test_valid_ttl_imports_and_merges(self, schema_repo, tmp_path: Path):
         # Подготовка базового T-Box
         await schema_repo.ensure_indexes()
-        await schema_repo.save_tbox_classes([
-            SchemaClass(name="Person", status=SchemaStatus.CORE),
-            SchemaClass(name="Organization", status=SchemaStatus.CORE),
-        ])
-        await schema_repo.save_schema_relations([
-            SchemaRelation(
-                source_class="Person", relation_name="WORKS_AT",
-                target_class="Organization", status=SchemaStatus.CORE
-            )
-        ])
+        await schema_repo.save_tbox_classes(
+            [
+                SchemaClass(name="Person", status=SchemaStatus.CORE),
+                SchemaClass(name="Organization", status=SchemaStatus.CORE),
+            ]
+        )
+        await schema_repo.save_schema_relations(
+            [
+                SchemaRelation(
+                    source_class="Person",
+                    relation_name="WORKS_AT",
+                    target_class="Organization",
+                    status=SchemaStatus.CORE,
+                )
+            ]
+        )
 
         ttl_content = """@prefix : <http://example.org/gr_a3#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -82,9 +87,9 @@ class TestUpdateOntologyUseCase:
         self, schema_repo, tmp_path: Path
     ):
         # Создаём класс, который будем "удалять"
-        await schema_repo.save_tbox_classes([
-            SchemaClass(name="Unused", status=SchemaStatus.DRAFT)
-        ])
+        await schema_repo.save_tbox_classes(
+            [SchemaClass(name="Unused", status=SchemaStatus.DRAFT)]
+        )
 
         ttl_content = """@prefix : <http://example.org/gr_a3#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .

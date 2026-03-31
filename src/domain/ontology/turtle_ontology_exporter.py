@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import List
-from src.domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
+
 
 class TurtleOntologyExporter:
     """Чистый доменный класс — отвечает только за генерацию Turtle."""
@@ -20,15 +21,19 @@ class TurtleOntologyExporter:
         "# GR_A3 Ontology — T-Box (только схема)\n"
         "# ============================================\n"
         f"<{ONTOLOGY_IRI}> a owl:Ontology ;\n"
-        f"    rdfs:label \"GR_A3 Knowledge Graph Ontology\" ;\n"
-        f"    rdfs:comment \"Экспортировано из проекта gr_a3\" .\n\n"
+        f'    rdfs:label "GR_A3 Knowledge Graph Ontology" ;\n'
+        f'    rdfs:comment "Экспортировано из проекта gr_a3" .\n\n'
     )
 
     CLASSES_SECTION = "# ==================== КЛАССЫ ====================\n"
-    PROPERTIES_SECTION = "# ==================== ОБЪЕКТНЫЕ СВОЙСТВА ====================\n"
+    PROPERTIES_SECTION = (
+        "# ==================== ОБЪЕКТНЫЕ СВОЙСТВА ====================\n"
+    )
 
     @classmethod
-    def to_turtle(cls, classes: List[SchemaClass], relations: List[SchemaRelation]) -> str:
+    def to_turtle(
+        cls, classes: List[SchemaClass], relations: List[SchemaRelation]
+    ) -> str:
         """Основной публичный метод домена."""
         lines = [cls.HEADER, cls.CLASSES_SECTION]
 
@@ -61,7 +66,9 @@ class TurtleOntologyExporter:
     @staticmethod
     def _group_properties(relations: List[SchemaRelation]) -> dict:
         """Группирует по имени свойства: {name: {"domains": set, "ranges": set, "comment": str}}"""
-        groups: defaultdict = defaultdict(lambda: {"domains": set(), "ranges": set(), "comment": ""})
+        groups: defaultdict = defaultdict(
+            lambda: {"domains": set(), "ranges": set(), "comment": ""}
+        )
         for r in relations:
             name = r.relation_name
             groups[name]["domains"].add(r.source_class)

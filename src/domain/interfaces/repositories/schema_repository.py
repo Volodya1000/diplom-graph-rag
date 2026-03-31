@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
 
-from src.domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 
 class ISchemaRepository(ABC):
@@ -21,7 +21,8 @@ class ISchemaRepository(ABC):
 
     @abstractmethod
     async def save_schema_relations(
-        self, relations: List[SchemaRelation],
+        self,
+        relations: List[SchemaRelation],
     ) -> None: ...
 
     @abstractmethod

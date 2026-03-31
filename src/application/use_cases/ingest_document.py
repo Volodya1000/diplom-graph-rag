@@ -1,10 +1,5 @@
 """
 Use Case: Полная индексация PDF → граф знаний.
-
-Улучшения логирования:
-  - Прогресс чанков: chunk 5/66
-  - Timing: общее и per-chunk
-  - Итоговая сводка
 """
 
 import logging
@@ -13,8 +8,8 @@ from pathlib import Path
 
 from src.domain.interfaces.llm.llm_client import ILLMClient, ExtractionResult
 from src.domain.graph_components.nodes import DocumentNode, ChunkNode
-from src.domain.agregates.instance_agregate import InstanceAggregate
-from src.domain.agregates.document_agregate import DocumentAggregate
+from src.domain.aggregates.instance_agregate import InstanceAggregate
+from src.domain.aggregates.document_agregate import DocumentAggregate
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
@@ -59,8 +54,10 @@ class IngestDocumentUseCase:
             return
         logger.warning("⚠️ T-Box пуст — автоинициализация…")
         from src.domain.ontology.base_tbox import (
-            BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS,
+            BASE_TBOX_CLASSES,
+            BASE_TBOX_RELATIONS,
         )
+
         await self.schema_repo.save_tbox_classes(BASE_TBOX_CLASSES)
         await self.schema_repo.save_schema_relations(BASE_TBOX_RELATIONS)
 
@@ -105,8 +102,7 @@ class IngestDocumentUseCase:
         for i, chunk in enumerate(domain_chunks):
             chunk.embedding = embeddings[i]
         logger.info(
-            f"🧠 Embeddings: {len(embeddings)} "
-            f"({time.monotonic() - t_embed:.1f}s)"
+            f"🧠 Embeddings: {len(embeddings)} ({time.monotonic() - t_embed:.1f}s)"
         )
 
         # === SAVE DOC + CHUNKS ===
@@ -129,13 +125,11 @@ class IngestDocumentUseCase:
             current_classes = await self.schema_repo.get_tbox_classes()
             current_relations = await self.schema_repo.get_schema_relations()
 
-            extraction: ExtractionResult = (
-                await self.llm.extract_entities_and_triples(
-                    text=chunk.text,
-                    tbox_classes=current_classes,
-                    tbox_relations=current_relations,
-                    known_entities=registry.format_known_entities(),
-                )
+            extraction: ExtractionResult = await self.llm.extract_entities_and_triples(
+                text=chunk.text,
+                tbox_classes=current_classes,
+                tbox_relations=current_relations,
+                known_entities=registry.format_known_entities(),
             )
 
             if not extraction.entities and not extraction.triples:
@@ -146,10 +140,16 @@ class IngestDocumentUseCase:
                 continue
 
             (
-                instances, new_classes, resolved_triples, new_relations,
+                instances,
+                new_classes,
+                resolved_triples,
+                new_relations,
             ) = await self.er_svc.process_extraction(
-                extraction, current_classes, current_relations,
-                chunk.chunk_id, registry,
+                extraction,
+                current_classes,
+                current_relations,
+                chunk.chunk_id,
+                registry,
             )
 
             if new_classes:

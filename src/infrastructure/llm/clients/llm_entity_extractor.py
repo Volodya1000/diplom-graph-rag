@@ -25,7 +25,7 @@ from src.application.dtos.extraction_dtos import (
     RawExtractedEntity,
     RawExtractedTriple,
 )
-from src.domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.infrastructure.llm.llm_factory import ChatOllamaFactory
 from src.infrastructure.llm.output_cleaners import clean_json_output
@@ -93,12 +93,7 @@ class OllamaClient(ILLMClient):
             format_instructions=parser.get_format_instructions(),
         )
 
-        chain = (
-            prompt
-            | self._llm
-            | RunnableLambda(clean_json_output)
-            | parser
-        )
+        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
 
         try:
             parsed: _ExtractionOutput = await self._invoke_chain(
@@ -122,9 +117,7 @@ class OllamaClient(ILLMClient):
                     logger.debug(f"🚫 Filtered entity: «{name}»")
                     filtered_count += 1
                     continue
-                entities.append(
-                    RawExtractedEntity(name=name, type=etype)
-                )
+                entities.append(RawExtractedEntity(name=name, type=etype))
 
             if filtered_count > 0:
                 logger.info(
@@ -141,40 +134,30 @@ class OllamaClient(ILLMClient):
                 obj = t.object.strip()
                 if not subj or not pred or not obj:
                     continue
-                if (
-                    subj.lower() not in valid_names
-                    and subj not in known_str
-                ):
+                if subj.lower() not in valid_names and subj not in known_str:
                     continue
-                if (
-                    obj.lower() not in valid_names
-                    and obj not in known_str
-                ):
+                if obj.lower() not in valid_names and obj not in known_str:
                     continue
                 triples.append(
                     RawExtractedTriple(
-                        subject=subj, predicate=pred, object=obj,
+                        subject=subj,
+                        predicate=pred,
+                        object=obj,
                     )
                 )
 
             trimmed = len(parsed.triples) - len(triples)
             if trimmed > 0:
                 logger.info(
-                    f"✂️ Trimmed: {trimmed} triples "
-                    f"(of {len(parsed.triples)} raw)"
+                    f"✂️ Trimmed: {trimmed} triples (of {len(parsed.triples)} raw)"
                 )
 
             max_t = self._settings.max_triples_per_chunk
             if len(triples) > max_t:
-                logger.warning(
-                    f"⚠️ Capped triples: {len(triples)} → {max_t}"
-                )
+                logger.warning(f"⚠️ Capped triples: {len(triples)} → {max_t}")
                 triples = triples[:max_t]
 
-            logger.info(
-                f"🤖 LLM: {len(entities)} entities, "
-                f"{len(triples)} triples"
-            )
+            logger.info(f"🤖 LLM: {len(entities)} entities, {len(triples)} triples")
             return ExtractionResult(entities=entities, triples=triples)
 
         except Exception as e:

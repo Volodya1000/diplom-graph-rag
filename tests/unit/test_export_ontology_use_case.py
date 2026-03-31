@@ -1,12 +1,13 @@
 """
 Unit: TurtleOntologyExporter (домен) + UseCase.
 """
+
 import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock
 from src.domain.ontology.turtle_ontology_exporter import TurtleOntologyExporter
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
-from src.domain.ontology.shema import SchemaClass  # для теста escaping
+from src.domain.ontology.schema import SchemaClass  # для теста escaping
 
 pytestmark = pytest.mark.unit
 

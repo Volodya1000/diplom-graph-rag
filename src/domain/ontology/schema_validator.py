@@ -9,7 +9,7 @@
 
 from typing import Dict, List, Set
 
-from src.domain.ontology.shema import SchemaClass, SchemaRelation
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 
 class SchemaValidator:
@@ -20,9 +20,7 @@ class SchemaValidator:
         classes: List[SchemaClass],
         relations: List[SchemaRelation],
     ):
-        self._classes: Dict[str, SchemaClass] = {
-            c.name.lower(): c for c in classes
-        }
+        self._classes: Dict[str, SchemaClass] = {c.name.lower(): c for c in classes}
         self._relations = relations
 
     # ------------------------------------------------------------------
@@ -41,7 +39,7 @@ class SchemaValidator:
         while current in self._classes and current not in visited:
             visited.add(current)
             cls = self._classes[current]
-            ancestors.add(cls.name)               # оригинальный регистр
+            ancestors.add(cls.name)  # оригинальный регистр
             if cls.parent:
                 current = cls.parent.lower()
             else:
@@ -170,7 +168,6 @@ class SchemaValidator:
         for rel in self._relations:
             desc = f" — {rel.description}" if rel.description else ""
             lines.append(
-                f"• {rel.source_class} → {rel.relation_name} → "
-                f"{rel.target_class}{desc}"
+                f"• {rel.source_class} → {rel.relation_name} → {rel.target_class}{desc}"
             )
         return "\n".join(lines)

@@ -12,11 +12,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
 
-from src.domain.ontology.shema import SchemaClass, SchemaStatus
+from src.domain.ontology.schema import SchemaClass, SchemaStatus
 from src.domain.interfaces.llm.llm_client import ExtractionResult
 from src.application.dtos.extraction_dtos import RawExtractedEntity, RawExtractedTriple
 from src.application.use_cases.ingest_document import IngestDocumentUseCase
-from src.application.services.entity_resolution_service import EntityResolutionOrchestrator
+from src.application.services.entity_resolution_service import (
+    EntityResolutionOrchestrator,
+)
 from src.application.services.post_processing_service import PostProcessingService
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.value_objects.synonym_group import SynonymResolutionResult
@@ -58,7 +60,9 @@ def mock_llm():
         ],
         triples=[
             RawExtractedTriple(
-                subject="Старуха", predicate="CREATED", object="Колобок",
+                subject="Старуха",
+                predicate="CREATED",
+                object="Колобок",
             ),
         ],
     )
@@ -71,7 +75,9 @@ def mock_llm():
         ],
         triples=[
             RawExtractedTriple(
-                subject="Заяц", predicate="INTERACTS_WITH", object="Колобок",
+                subject="Заяц",
+                predicate="INTERACTS_WITH",
+                object="Колобок",
             ),
         ],
     )
@@ -90,14 +96,20 @@ def mock_parser():
             index=1,
             enriched_text="Жили-были старик со старухой. Испекла старуха колобок.",
             metadata=ChunkMetadata(
-                chunk_index=1, headings=[], start_page=1, end_page=1,
+                chunk_index=1,
+                headings=[],
+                start_page=1,
+                end_page=1,
             ),
         ),
         ProcessedChunk(
             index=2,
             enriched_text="Катится колобок, а навстречу ему заяц.",
             metadata=ChunkMetadata(
-                chunk_index=2, headings=[], start_page=1, end_page=1,
+                chunk_index=2,
+                headings=[],
+                start_page=1,
+                end_page=1,
             ),
         ),
     ]
@@ -116,27 +128,35 @@ def mock_synonym_resolver():
 async def seeded_schema(schema_repo):
     """T-Box с базовыми классами для теста."""
     await schema_repo.ensure_indexes()
-    await schema_repo.save_tbox_classes([
-        SchemaClass(name="Person", status=SchemaStatus.CORE),
-        SchemaClass(name="Animal", status=SchemaStatus.CORE),
-        SchemaClass(name="Product", status=SchemaStatus.CORE),
-    ])
-    from src.domain.ontology.shema import SchemaRelation
-    await schema_repo.save_schema_relations([
-        SchemaRelation(
-            source_class="Person", relation_name="CREATED",
-            target_class="Product", status=SchemaStatus.CORE,
-        ),
-        SchemaRelation(
-            source_class="Animal", relation_name="INTERACTS_WITH",
-            target_class="Product", status=SchemaStatus.CORE,
-        ),
-    ])
+    await schema_repo.save_tbox_classes(
+        [
+            SchemaClass(name="Person", status=SchemaStatus.CORE),
+            SchemaClass(name="Animal", status=SchemaStatus.CORE),
+            SchemaClass(name="Product", status=SchemaStatus.CORE),
+        ]
+    )
+    from src.domain.ontology.schema import SchemaRelation
+
+    await schema_repo.save_schema_relations(
+        [
+            SchemaRelation(
+                source_class="Person",
+                relation_name="CREATED",
+                target_class="Product",
+                status=SchemaStatus.CORE,
+            ),
+            SchemaRelation(
+                source_class="Animal",
+                relation_name="INTERACTS_WITH",
+                target_class="Product",
+                status=SchemaStatus.CORE,
+            ),
+        ]
+    )
     return schema_repo
 
 
 class TestIngestHappyPath:
-
     async def test_ingest_creates_document_chunks_instances_and_triples(
         self,
         seeded_schema,
@@ -196,9 +216,7 @@ class TestIngestHappyPath:
         all_instances_c2 = await instance_repo.get_instances_by_chunk(
             chunks[1].chunk_id,
         )
-        total_unique_names = {
-            i.name for i in all_instances_c1 + all_instances_c2
-        }
+        total_unique_names = {i.name for i in all_instances_c1 + all_instances_c2}
         assert "Старик" in total_unique_names or "Старуха" in total_unique_names
         assert "Колобок" in total_unique_names
         assert len(total_unique_names) >= 3
@@ -243,8 +261,10 @@ class TestIngestHappyPath:
                     index=1,
                     enriched_text=f"Content of {filename}",
                     metadata=ChunkMetadata(
-                        chunk_index=1, headings=[],
-                        start_page=1, end_page=1,
+                        chunk_index=1,
+                        headings=[],
+                        start_page=1,
+                        end_page=1,
                     ),
                 ),
             ]
