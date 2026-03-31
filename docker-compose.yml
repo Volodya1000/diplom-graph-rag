@@ -58,7 +58,8 @@ services:
     environment:
       - PIPELINES_API_KEY=0p3n-w3bu!
       - PIPELINES_DIR=/app/pipelines/
-
+    extra_hosts:
+      - host.docker.internal:host-gateway
 volumes:
   neo4j_data:
   neo4j_logs:

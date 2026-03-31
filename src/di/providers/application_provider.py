@@ -6,6 +6,9 @@ from src.domain.interfaces.repositories.document_repository import IDocumentRepo
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.interfaces.services.synonym_resolver import (
+    ISynonymResolver,
+)  # <--- ДОБАВЛЕН ИМПОРТ
 from src.domain.interfaces.llm.llm_client import ILLMClient
 from src.infrastructure.docling.doc_processor import DocProcessor
 from src.domain.resolution_rules import EntityResolutionMatcher
@@ -35,7 +38,6 @@ from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
 )
 from src.application.use_cases.ingest_document import IngestDocumentUseCase
 
-# Исправление F821:
 from src.config.extraction_settings import ExtractionSettings
 from src.config.rag_settings import RAGSettings
 
@@ -58,7 +60,7 @@ class ApplicationProvider(Provider):
         self,
         instance_repo: IInstanceRepository,
         doc_repo: IDocumentRepository,
-        synonym_resolver,
+        synonym_resolver: ISynonymResolver,  # <--- ИСПРАВЛЕНО (добавлена аннотация типа)
         embedder: IEmbeddingService,
         rag_settings: RAGSettings,
     ) -> PostProcessingService:
