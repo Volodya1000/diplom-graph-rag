@@ -3,7 +3,7 @@ Unit-тесты: парсинг Turtle → наши модели (без БД).
 """
 import pytest
 from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
-from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
+from src.domain.ontology.shema import SchemaStatus
 
 
 @pytest.fixture

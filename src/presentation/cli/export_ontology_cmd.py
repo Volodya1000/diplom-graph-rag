@@ -42,7 +42,7 @@ async def _run(output_path: Path, force: bool):
     try:
         use_case = await container.get(ExportOntologyUseCase)
         saved_path = await use_case.execute(output_path)
-        console.print(f"[bold green]✅ Онтология успешно выгружена:[/bold green]")
+        console.print("[bold green]✅ Онтология успешно выгружена:[/bold green]")
         console.print(f"   [cyan]{saved_path}[/cyan]")
         console.print("\n[dim]Открывайте файл в Protégé → File → Open[/dim]")
     except Exception as e:

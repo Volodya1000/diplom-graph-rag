@@ -31,7 +31,7 @@ class TestExportOntologyIntegration:
         use_case = ExportOntologyUseCase(schema_repo)
         output_file = tmp_path / "gr_a3_real.ttl"
 
-        saved_path = await use_case.execute(output_file)
+        await use_case.execute(output_file)
 
         assert output_file.exists()
         content = output_file.read_text(encoding="utf-8")

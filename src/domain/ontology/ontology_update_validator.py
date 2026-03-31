@@ -1,8 +1,7 @@
-from collections import defaultdict
 from typing import Dict, List
 import re
 from pydantic import BaseModel
-from .shema import SchemaClass, SchemaRelation, SchemaStatus
+from .shema import SchemaClass, SchemaRelation
 
 class ValidationResult(BaseModel):
     is_valid: bool
@@ -84,7 +83,8 @@ class OntologyUpdateValidator:
         return list(by_name.values())
 
     def _merge_relations(self, current: List[SchemaRelation], proposed: List[SchemaRelation]) -> List[SchemaRelation]:
-        key = lambda r: (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
+        def key(r):
+            return (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
         by_key = {key(r): r.model_copy() for r in current}
         for p in proposed:
             k = key(p)
@@ -96,7 +96,6 @@ class OntologyUpdateValidator:
 
     def _has_cycle(self, classes: List[SchemaClass]) -> bool:
         graph: Dict[str, str] = {c.name.lower(): c.parent.lower() for c in classes if c.parent}
-        visited = set()
 
         def dfs(node: str, path: set) -> bool:
             if node in path:

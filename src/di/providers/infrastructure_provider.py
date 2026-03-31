@@ -27,20 +27,20 @@ from src.infrastructure.embeddings.sentence_transformer_embedding_service import
     SentenceTransformerService,
 )
 from src.infrastructure.llm.llm_factory import ChatOllamaFactory
-from src.infrastructure.llm.clients.ollama_client import OllamaClient
-from src.infrastructure.llm.clients.ollama_synonym_resolver import (
+from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
+from src.infrastructure.llm.clients.llm_synonym_resolver import (
     OllamaSynonymResolver,
 )
 from src.infrastructure.docling.doc_processor import DocProcessor
 
 
 class InfrastructureProvider(Provider):
-
     # --- Neo4j: один драйвер → четыре репозитория ---
 
     @provide(scope=Scope.APP)
     async def provide_session_manager(
-        self, settings: Neo4jSettings,
+        self,
+        settings: Neo4jSettings,
     ) -> AsyncIterator[Neo4jSessionManager]:
         sm = Neo4jSessionManager(settings)
         yield sm
@@ -48,25 +48,29 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_schema_repo(
-        self, sm: Neo4jSessionManager,
+        self,
+        sm: Neo4jSessionManager,
     ) -> ISchemaRepository:
         return Neo4jSchemaRepository(sm)
 
     @provide(scope=Scope.APP)
     def provide_document_repo(
-        self, sm: Neo4jSessionManager,
+        self,
+        sm: Neo4jSessionManager,
     ) -> IDocumentRepository:
         return Neo4jDocumentRepository(sm)
 
     @provide(scope=Scope.APP)
     def provide_instance_repo(
-        self, sm: Neo4jSessionManager,
+        self,
+        sm: Neo4jSessionManager,
     ) -> IInstanceRepository:
         return Neo4jInstanceRepository(sm)
 
     @provide(scope=Scope.APP)
     def provide_edge_repo(
-        self, sm: Neo4jSessionManager,
+        self,
+        sm: Neo4jSessionManager,
     ) -> IEdgeRepository:
         return Neo4jEdgeRepository(sm)
 
@@ -74,21 +78,23 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_llm_factory(
-        self, settings: OllamaSettings,
+        self,
+        settings: OllamaSettings,
     ) -> ChatOllamaFactory:
         return ChatOllamaFactory(settings)
 
     @provide(scope=Scope.APP)
     def provide_llm(
-            self,
-            factory: ChatOllamaFactory,
-            extraction_settings: ExtractionSettings,
+        self,
+        factory: ChatOllamaFactory,
+        extraction_settings: ExtractionSettings,
     ) -> ILLMClient:
         return OllamaClient(factory, extraction_settings)
 
     @provide(scope=Scope.APP)
     def provide_synonym_resolver(
-        self, factory: ChatOllamaFactory,
+        self,
+        factory: ChatOllamaFactory,
     ) -> ISynonymResolver:
         return OllamaSynonymResolver(factory)
 

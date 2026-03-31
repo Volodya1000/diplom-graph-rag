@@ -53,5 +53,5 @@ pythonpath = ["."]
 [tool.ruff.lint.per-file-ignores]
 "main.py" = ["E402"]
 "src/presentation/cli/*.py" = ["E402"]
-
+"tests/integration/conftest.py" = ["E402"]
 

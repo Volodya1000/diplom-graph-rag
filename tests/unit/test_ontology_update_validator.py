@@ -4,7 +4,6 @@ Unit-тесты: все бизнес-правила валидации и merge.
 import pytest
 from src.domain.ontology.ontology_update_validator import (
     OntologyUpdateValidator,
-    ValidationResult,
 )
 from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
 

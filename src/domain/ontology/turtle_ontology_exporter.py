@@ -1,6 +1,6 @@
 from collections import defaultdict
 from typing import List
-from src.domain.ontology.shema import SchemaClass, SchemaRelation, SchemaStatus
+from src.domain.ontology.shema import SchemaClass, SchemaRelation
 
 class TurtleOntologyExporter:
     """Чистый доменный класс — отвечает только за генерацию Turtle."""

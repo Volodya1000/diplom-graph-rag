@@ -8,7 +8,7 @@ from src.config.extraction_settings import ExtractionSettings
 
 def _make_client(settings: Optional[ExtractionSettings] = None):
     from unittest.mock import MagicMock
-    from src.infrastructure.llm.clients.ollama_client import OllamaClient
+    from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
 
     factory = MagicMock()
     factory.create_json.return_value = MagicMock()
@@ -16,7 +16,6 @@ def _make_client(settings: Optional[ExtractionSettings] = None):
 
 
 class TestTooShort:
-
     def test_single_char_rejected(self):
         client = _make_client()
         assert client._is_bad_entity("а") is True
@@ -27,7 +26,6 @@ class TestTooShort:
 
 
 class TestTooLong:
-
     def test_over_max_chars_rejected(self):
         client = _make_client(ExtractionSettings(max_entity_name_chars=20))
         assert client._is_bad_entity("А" * 21) is True
@@ -46,7 +44,6 @@ class TestTooLong:
 
 
 class TestSingleLowercaseWord:
-
     def test_lowercase_single_word_rejected(self):
         client = _make_client()
         assert client._is_bad_entity("модель") is True
@@ -69,7 +66,6 @@ class TestSingleLowercaseWord:
 
 
 class TestProperNames:
-
     def test_capitalized_single_word_passes(self):
         client = _make_client()
         assert client._is_bad_entity("Колобок") is False
@@ -99,7 +95,6 @@ class TestProperNames:
 
 
 class TestConfigurableLimits:
-
     def test_custom_min_chars(self):
         client = _make_client(ExtractionSettings(min_entity_name_chars=5))
         assert client._is_bad_entity("BERT") is True

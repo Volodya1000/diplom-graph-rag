@@ -3,7 +3,9 @@
 from dishka import Provider, Scope, provide
 
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
-from src.domain.interfaces.services.graph_analytics_service import IGraphAnalyticsService
+from src.domain.interfaces.services.graph_analytics_service import (
+    IGraphAnalyticsService,
+)
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.value_objects.search_context import SearchMode
@@ -11,7 +13,7 @@ from src.domain.value_objects.search_context import SearchMode
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
 from src.infrastructure.llm.llm_factory import ChatOllamaFactory
-from src.infrastructure.llm.clients.ollama_answer_generator import (
+from src.infrastructure.llm.clients.llm_answer_generator import (
     OllamaAnswerGenerator,
 )
 from src.infrastructure.retrieval.vector_search_strategy import VectorSearchStrategy
@@ -29,12 +31,12 @@ from src.application.use_cases.build_communities import BuildCommunitiesUseCase
 
 
 class RAGProvider(Provider):
-
     # --- Analytics ---
 
     @provide(scope=Scope.APP)
     def provide_analytics(
-        self, sm: Neo4jSessionManager,
+        self,
+        sm: Neo4jSessionManager,
     ) -> IGraphAnalyticsService:
         return Neo4jGDSAnalyticsService(sm)
 
@@ -42,7 +44,8 @@ class RAGProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_generator(
-        self, factory: ChatOllamaFactory,
+        self,
+        factory: ChatOllamaFactory,
     ) -> IAnswerGenerator:
         return OllamaAnswerGenerator(factory)
 

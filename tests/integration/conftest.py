@@ -30,6 +30,7 @@ import pytest
 import pytest_asyncio
 from testcontainers.neo4j import Neo4jContainer
 from pydantic import SecretStr
+from typing import AsyncGenerator
 
 from src.config.neo4j_settings import Neo4jSettings
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
@@ -65,7 +66,7 @@ def neo4j_settings(neo4j_container) -> Neo4jSettings:
 
 # ─── SessionManager (ОДИН НА ТЕСТ) ───
 @pytest_asyncio.fixture
-async def session_manager(neo4j_settings) -> Neo4jSessionManager:
+async def session_manager(neo4j_settings) -> AsyncGenerator[Neo4jSessionManager, None]:
     sm = Neo4jSessionManager(neo4j_settings)
     yield sm
     await sm.close()
