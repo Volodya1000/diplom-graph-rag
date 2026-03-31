@@ -38,7 +38,7 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
         total_chunks = len(ctx.domain_chunks)
 
         logger.info(
-            f"🔍 Начинаем извлечение сущностей и триплетов из {total_chunks} чанков"
+            f"🔍 Запуск извлечения сущностей и триплетов из {total_chunks} чанков"
         )
 
         for idx, chunk in enumerate(
@@ -49,7 +49,7 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
             current_classes = await self.schema_repo.get_tbox_classes()
             current_relations = await self.schema_repo.get_schema_relations()
 
-            # --- LLM вызов ---
+            # ==================== LLM ВЫЗОВ ====================
             extraction = await self.llm.extract_entities_and_triples(
                 text=chunk.text,
                 tbox_classes=current_classes,
@@ -59,55 +59,83 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
 
             duration = time.monotonic() - start_time
 
+            # ==================== ДЕТАЛЬНЫЙ ЛОГ ПО ЧАНКУ ====================
             logger.info(
-                f"✅ Чанк {idx}/{total_chunks} | "
-                f"сущностей: {len(extraction.entities)} | "
-                f"триплетов: {len(extraction.triples)} | "
+                f"✅ Чанк {idx:2d}/{total_chunks} | "
+                f"сущностей: {len(extraction.entities):2d} | "
+                f"триплетов: {len(extraction.triples):2d} | "
                 f"время: {duration:.1f}с"
             )
 
+            # Показываем конкретные сущности
             if extraction.entities:
-                logger.debug(f"   Сущности: {[e.name for e in extraction.entities]}")
-            if extraction.triples:
-                logger.debug(
-                    f"   Триплеты: {[f'{t.subject}→{t.predicate}→{t.object}' for t in extraction.triples]}"
+                entities_str = ", ".join(
+                    f"{e.name} [{e.type}]" for e in extraction.entities
                 )
+                logger.info(f"   📌 Сущности: {entities_str}")
+            else:
+                logger.info("   📌 Сущности: (нет)")
 
-            # --- Обработка и сохранение ---
+            # Показываем конкретные триплеты
+            if extraction.triples:
+                for t in extraction.triples:
+                    logger.info(f"   🔗 {t.subject} → {t.predicate} → {t.object}")
+            else:
+                logger.info("   🔗 Триплеты: (нет)")
+
+            # ==================== ОБРАБОТКА И СОХРАНЕНИЕ ====================
             (
                 instances,
                 new_classes,
                 resolved_triples,
                 new_relations,
             ) = await self.er_svc.process_extraction(
-                extraction, current_classes, current_relations, chunk.chunk_id, registry
+                extraction,
+                current_classes,
+                current_relations,
+                chunk.chunk_id,
+                registry,
             )
 
+            # Новые классы
             if new_classes:
-                await self.schema_repo.save_tbox_classes(new_classes)
                 logger.info(f"   ➕ Добавлено новых классов: {len(new_classes)}")
+                for c in new_classes:
+                    logger.info(f"      → {c.name} (draft)")
 
+            # Новые отношения
             if new_relations:
-                await self.schema_repo.save_schema_relations(new_relations)
                 logger.info(f"   ➕ Добавлено новых отношений: {len(new_relations)}")
+                for r in new_relations:
+                    logger.info(
+                        f"      → {r.source_class} --{r.relation_name}→ {r.target_class}"
+                    )
 
-            # Сохраняем экземпляры и рёбра
+            # Сохранение экземпляров
+            saved_this_chunk = 0
             for inst in instances:
                 if inst.instance_id not in ctx.saved_instance_ids:
                     await self.instance_repo.save_instance(inst)
                     edges = GraphEdgeBuilder.build_instance_edges(instance=inst)
                     await self.edge_repo.save_edges(edges)
                     ctx.saved_instance_ids.add(inst.instance_id)
+                    saved_this_chunk += 1
 
-            # Сохраняем триплеты
+            # Сохранение триплетов
             for triple in resolved_triples:
                 await self.instance_repo.save_instance_relation(triple)
 
             ctx.total_entities += len(instances)
             ctx.total_triples += len(resolved_triples)
 
+            logger.debug(
+                f"   Сохранено в этом чанке: {saved_this_chunk} новых сущностей"
+            )
+
+        # ==================== ИТОГОВАЯ СВОДКА ====================
         logger.info(
-            f"🎉 Извлечение завершено! "
-            f"Всего сущностей: {ctx.total_entities}, "
-            f"триплетов: {ctx.total_triples}"
+            f"🎉 Извлечение сущностей завершено!\n"
+            f"   Всего обработано чанков: {total_chunks}\n"
+            f"   🧩 Сущностей сохранено: {ctx.total_entities}\n"
+            f"   🔗 Триплетов сохранено: {ctx.total_triples}"
         )
