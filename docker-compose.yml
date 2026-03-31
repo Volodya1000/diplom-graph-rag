@@ -3,27 +3,22 @@ services:
     image: neo4j:2025.12.1-community
     container_name: neo4j
     restart: unless-stopped
-
     ports:
       - "7474:7474"
       - "7687:7687"
-
     env_file:
       - .env
-
     environment:
-      - NEO4J_AUTH=${DB_USER}/${DB_PASSWORD}
+      - NEO4J_AUTH=${NEO4J__USERNAME:-neo4j}/${NEO4J__PASSWORD:-password}
       - NEO4J_server_default__listen__address=0.0.0.0
-      - NEO4J_server_default__advertised__address=${HOST_IP}
+      - NEO4J_server_default__advertised__address=127.0.0.1
       - NEO4J_PLUGINS=["apoc","graph-data-science"]
       - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
-
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
       - ./import:/import
       - ./plugins:/plugins
-
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 30s
@@ -31,6 +26,52 @@ services:
       retries: 5
       start_period: 30s
 
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    volumes:
+      - open-webui:/app/backend/data
+    depends_on:
+      pipelines:
+        condition: service_healthy
+    ports:
+      - "3000:8080"
+    environment:
+      # Обязательно задайте случайный ключ (минимум 32 символа)
+      # Авто-создание админа
+      - DEFAULT_USER_EMAIL=admin@example.com
+      - DEFAULT_USER_PASSWORD=12345
+      - DEFAULT_USER_ROLE=admin
+      # Pipelines
+      - ENABLE_PIPELINES=true
+      - 'WEBUI_SECRET_KEY='
+      - 'OPENAI_API_BASE_URL=http://pipelines:9099'
+      - 'OPENAI_API_KEY=0p3n-w3bu!'
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+
+  pipelines:
+    image: ghcr.io/open-webui/pipelines:main
+    container_name: pipelines
+    restart: unless-stopped
+    ports:
+      - 9099:9099
+      - 9098:9098
+    volumes:
+      - ./pipelines:/app/pipelines
+    environment:
+      - PIPELINES_API_KEY=0p3n-w3bu!
+      - PIPELINES_DIR=/app/pipelines/
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9099/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  open-webui:
+  pipelines: {}
