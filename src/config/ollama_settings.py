@@ -1,32 +1,24 @@
-import os
 from typing import Dict, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, SecretStr
 
 
 class OllamaSettings(BaseModel):
-    """
-    Настройки модели Ollama с переключателем Cloud/Local.
-    """
-    #model_name: str = Field(default="qwen3.5:9b", description="Название модели")
-    model_name: str = Field(default="gpt-oss:120b-cloud", description="Название модели")
-    temperature: float = Field(default=0.4, ge=0.0, le=1.0)
-    num_ctx: int = Field(default=4096, ge=1024)
-    is_cloud: bool = Field(default=True)
-
-    # API ключ (читается один раз из .env)
-    api_key: Optional[str] = Field(
-        default_factory=lambda: os.getenv("OLLAMA_API_KEY")
-    )
+    model_name: str
+    temperature: float
+    num_ctx: int
+    is_cloud: bool
+    local_url: str
+    api_key: Optional[SecretStr] = None
 
     @property
     def base_url(self) -> str:
         if self.is_cloud:
-            return "https://ollama.com"          # ← замени на свой облачный endpoint если нужно
-        return os.getenv("OLLAMA_LOCAL_URL", "http://localhost:11434")
+            return "https://ollama.com"
+        return self.local_url
 
     @property
     def headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.is_cloud and self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["Authorization"] = f"Bearer {self.api_key.get_secret_value()}"
         return headers

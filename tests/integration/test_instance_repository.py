@@ -48,7 +48,7 @@ class TestInstanceCRUD:
         await instance_repo.save_instance(inst)
 
         # Создаём MENTIONED_IN ребро
-        from src.domain.aggregates.instance_agregate import InstanceAggregate
+        from src.domain.aggregates.instance_aggregate import InstanceAggregate
 
         agg = InstanceAggregate(instance=inst)
         await edge_repo.save_edges(agg.build_edges())

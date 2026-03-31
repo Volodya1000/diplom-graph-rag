@@ -1,0 +1,39 @@
+# config.yml
+embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
+
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  # password берется из .env
+  embedding_dim: 384
+  vector_search_threshold: 0.70
+
+ollama:
+  model_name: "gpt-oss:120b-cloud"
+  temperature: 0.4
+  num_ctx: 4096
+  is_cloud: true
+  local_url: "http://localhost:11434"
+  # api_key берется из .env
+
+chunking:
+  tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2"
+  merge_peers: true
+  min_chunk_chars: 50
+  max_heading_chars: 80
+
+parsing:
+  ocr_engine: "easyocr"
+  tesseract_langs: ["rus", "eng"]
+  easyocr_langs: ["ru", "en"]
+  tesseract_cmd: ""
+  do_table_structure: true
+  images_scale: 2.0
+  generate_page_images: false
+
+extraction:
+  max_entity_name_words: 5
+  max_entity_name_chars: 60
+  min_entity_name_chars: 2
+  max_triples_per_chunk: 15
+  no_vector_merge_types: ["date"]

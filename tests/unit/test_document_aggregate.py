@@ -9,7 +9,7 @@ Unit: DocumentAggregate — построение рёбер документа.
 
 from src.domain.graph_components.nodes import DocumentNode, ChunkNode
 from src.domain.graph_components.edges import GraphRelationType
-from src.domain.aggregates.document_agregate import DocumentAggregate
+from src.domain.aggregates.document_aggregate import DocumentAggregate
 
 
 class TestDocumentAggregateEdges:

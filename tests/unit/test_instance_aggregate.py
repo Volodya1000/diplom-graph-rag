@@ -9,7 +9,7 @@ Unit: InstanceAggregate — INSTANCE_OF и MENTIONED_IN рёбра.
 
 from src.domain.graph_components.nodes import InstanceNode
 from src.domain.graph_components.edges import GraphRelationType
-from src.domain.aggregates.instance_agregate import InstanceAggregate
+from src.domain.aggregates.instance_aggregate import InstanceAggregate
 
 
 class TestInstanceAggregateEdges:

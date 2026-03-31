@@ -8,8 +8,8 @@ from pathlib import Path
 
 from src.domain.interfaces.llm.llm_client import ILLMClient, ExtractionResult
 from src.domain.graph_components.nodes import DocumentNode, ChunkNode
-from src.domain.aggregates.instance_agregate import InstanceAggregate
-from src.domain.aggregates.document_agregate import DocumentAggregate
+from src.domain.aggregates.instance_aggregate import InstanceAggregate
+from src.domain.aggregates.document_aggregate import DocumentAggregate
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository

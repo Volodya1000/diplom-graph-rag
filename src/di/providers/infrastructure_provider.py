@@ -5,9 +5,9 @@ from dishka import Provider, Scope, provide
 from src.config.extraction_settings import ExtractionSettings
 from src.config.neo4j_settings import Neo4jSettings
 from src.config.ollama_settings import OllamaSettings
-from src.config.base import AppConfig
 from src.config.chunking_settings import ChunkingSettings
 from src.config.parsing_settings import ParsingSettings
+from src.config.app_settings import AppSettings
 
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
@@ -101,8 +101,8 @@ class InfrastructureProvider(Provider):
     # --- Embeddings ---
 
     @provide(scope=Scope.APP)
-    def provide_embedder(self, config: AppConfig) -> IEmbeddingService:
-        return SentenceTransformerService(config.EMBEDDING_MODEL)
+    def provide_embedder(self, config: AppSettings) -> IEmbeddingService:
+        return SentenceTransformerService(config.embedding_model)
 
     # --- Document processing ---
 
