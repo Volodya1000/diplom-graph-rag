@@ -109,3 +109,5 @@ class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_parser(self) -> DocProcessor:
         return DocProcessor(ChunkingSettings(), ParsingSettings())
+
+

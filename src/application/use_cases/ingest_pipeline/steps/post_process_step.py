@@ -11,19 +11,36 @@ class PostProcessSynonymsStep(IIngestStep):
         self.post_processor = post_processor
 
     async def execute(self, ctx: IngestContext) -> None:
-        if ctx.skip_synonyms or ctx.total_entities <= 1 or not ctx.document:
+        if ctx.skip_synonyms:
+            logger.info("⏭️ Постобработка синонимов пропущена (--skip-synonyms)")
+            return
+
+        if ctx.total_entities <= 1 or not ctx.document:
+            logger.info("⏭️ Постобработка синонимов не нужна (мало сущностей)")
             return
 
         t_syn = time.monotonic()
-        logger.info("🔍 Post-processing: synonym resolution…")
+        logger.info("🔍 Запуск постобработки: поиск синонимов...")
 
         syn_result = await self.post_processor.resolve_synonyms(
             doc_id=ctx.document.doc_id,
             document_context=f"Документ: {ctx.file_path.name}",
         )
 
-        logger.info(
-            f"🔗 Synonyms: merged={syn_result.merged_count}, "
-            f"groups={len(syn_result.groups)} "
-            f"({time.monotonic() - t_syn:.1f}s)"
-        )
+        duration = time.monotonic() - t_syn
+
+        if syn_result.groups:
+            logger.info(
+                f"🔗 Синонимы обработаны за {duration:.1f}с | "
+                f"групп: {len(syn_result.groups)} | "
+                f"объединено: {syn_result.merged_count}"
+            )
+
+            for i, group in enumerate(syn_result.groups, 1):
+                logger.info(
+                    f"   Группа {i}: «{group.canonical_name}» ← {group.aliases}"
+                )
+        else:
+            logger.info(
+                f"✅ Постобработка завершена за {duration:.1f}с (синонимов не найдено)"
+            )
