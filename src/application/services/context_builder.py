@@ -1,10 +1,7 @@
 """
 Сборщик контекста для LLM из RetrievalResult.
-
-Отвечает за форматирование: чанки, тройки, community summaries
-→ единая строка контекста.
+Отвечает за форматирование: чанки (с документами и страницами), тройки, community summaries.
 """
-
 
 from src.domain.value_objects.search_context import RetrievalResult
 
@@ -34,10 +31,7 @@ class ContextBuilder:
                 key=lambda x: x.relevance_score,
                 reverse=True,
             ):
-                lines.append(
-                    f"[Тема: {', '.join(c.key_entities[:5])}]\n"
-                    f"{c.summary}"
-                )
+                lines.append(f"[Тема: {', '.join(c.key_entities[:5])}]\n{c.summary}")
             sections.append("\n\n".join(lines))
 
         # 2. Тройки (структурированные факты)
@@ -45,35 +39,31 @@ class ContextBuilder:
             lines = ["=== ФАКТЫ ИЗ ГРАФА ЗНАНИЙ ==="]
             for t in result.triples:
                 lines.append(
-                    f"• {t.subject} ({t.subject_type}) "
-                    f"—{t.predicate}→ "
-                    f"{t.object} ({t.object_type})"
+                    f"• {t.subject} ({t.subject_type}) —{t.predicate}→ {t.object} ({t.object_type})"
                 )
             sections.append("\n".join(lines))
 
-        # 3. Чанки (текстовый контекст)
+        # 3. Чанки (текстовый контекст с указанием страниц)
         if result.chunks:
-            lines = ["=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ ==="]
-            budget = self.max_context_chars - sum(
-                len(s) for s in sections
-            )
+            lines = ["=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ ИЗ ДОКУМЕНТОВ ==="]
+            budget = self.max_context_chars - sum(len(s) for s in sections)
             used = 0
-            for chunk in sorted(
-                result.chunks, key=lambda c: c.score, reverse=True,
-            ):
+            for chunk in sorted(result.chunks, key=lambda c: c.score, reverse=True):
                 if used + len(chunk.text) > budget:
                     break
-                src = (
-                    f" [{chunk.source_filename}]"
-                    if chunk.source_filename
-                    else ""
-                )
-                lines.append(
-                    f"--- Фрагмент #{chunk.chunk_index}{src} "
-                    f"(score={chunk.score:.2f}) ---\n"
-                    f"{chunk.text}"
-                )
+
+                # Формируем источник со страницами
+                src = chunk.source_filename or "Неизвестный_документ"
+                pages_info = f"Стр. {chunk.start_page}"
+                if chunk.start_page != chunk.end_page and chunk.end_page > 0:
+                    pages_info += f"-{chunk.end_page}"
+                if chunk.start_page == 0:
+                    pages_info = "Стр. неизвестна"
+
+                header = f"--- Фрагмент #{chunk.chunk_index} [Документ: {src}, {pages_info}] ---"
+                lines.append(f"{header}\n{chunk.text}")
                 used += len(chunk.text)
+
             sections.append("\n\n".join(lines))
 
         return "\n\n".join(sections) if sections else "(контекст не найден)"

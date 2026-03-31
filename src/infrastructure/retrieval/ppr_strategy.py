@@ -1,16 +1,10 @@
-"""
-LOCAL_PPR стратегия: vector seed → Personalized PageRank → расширенный контекст.
-
-1. Vector search → seed instances
-2. PPR от seed нод → находим "важные" ноды в окрестности
-3. Собираем чанки и тройки по PPR-результатам
-"""
-
 import logging
 from typing import List
 
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
-from src.domain.interfaces.services.graph_analytics_service import IGraphAnalyticsService
+from src.domain.interfaces.services.graph_analytics_service import (
+    IGraphAnalyticsService,
+)
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.value_objects.search_context import (
     RetrievalResult,
@@ -23,10 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class PPRStrategy(IRetrievalStrategy):
-    """
-    Personalized PageRank от seed-нод.
-    Расширяет контекст за пределы прямого vector search.
-    """
+    """Personalized PageRank от seed-нод."""
 
     def __init__(
         self,
@@ -47,23 +38,15 @@ class PPRStrategy(IRetrievalStrategy):
         return "personalized_pagerank"
 
     async def retrieve(
-        self,
-        query: str,
-        query_embedding: List[float],
-        top_k: int = 10,
+        self, query: str, query_embedding: List[float], top_k: int = 10
     ) -> RetrievalResult:
-
-        # 1. Vector search → seed instances
         seed_candidates = await self._instance_repo.find_candidates_by_vector(
-            query_embedding, limit=top_k,
+            query_embedding, limit=top_k
         )
         if not seed_candidates:
             return RetrievalResult(metadata={"strategy": self.name, "seeds": 0})
 
         seed_ids = [c.instance_id for c in seed_candidates]
-        logger.info(f"🌱 PPR seeds: {len(seed_ids)} instances")
-
-        # 2. Ensure projection + PPR
         await self._analytics.ensure_projection()
         ppr_results = await self._analytics.personalized_pagerank(
             seed_instance_ids=seed_ids,
@@ -71,16 +54,9 @@ class PPRStrategy(IRetrievalStrategy):
             damping_factor=self._damping,
         )
 
-        # 3. Собираем chunk_ids из PPR-результатов
-        chunk_ids: set[str] = set()
-        for r in ppr_results:
-            if r.get("chunk_id"):
-                chunk_ids.add(r["chunk_id"])
-
-        # 4. Загружаем чанки
+        chunk_ids = {r["chunk_id"] for r in ppr_results if r.get("chunk_id")}
         chunks = await self._load_chunks(list(chunk_ids))
 
-        # 5. Тройки между PPR-нодами
         ppr_instance_ids = {r["instance_id"] for r in ppr_results}
         triples = await self._load_triples_between(ppr_instance_ids)
 
@@ -94,45 +70,48 @@ class PPRStrategy(IRetrievalStrategy):
             },
         )
 
-    async def _load_chunks(
-        self, chunk_ids: List[str],
-    ) -> List[RetrievedChunk]:
+    async def _load_chunks(self, chunk_ids: List[str]) -> List[RetrievedChunk]:
         if not chunk_ids:
             return []
+
+        # НОВОЕ: JOIN с Document для извлечения имени и страниц
         query = """
         UNWIND $ids AS cid
         MATCH (c:Chunk {chunk_id: cid})
+        MATCH (d:Document {doc_id: c.doc_id})
         RETURN c.chunk_id    AS chunk_id,
                c.text        AS text,
-               c.chunk_index AS chunk_index
+               c.chunk_index AS chunk_index,
+               c.start_page  AS start_page,
+               c.end_page    AS end_page,
+               d.filename    AS filename
         """
         async with self._sm.session() as s:
             res = await s.run(query, {"ids": chunk_ids})
             data = await res.data()
+
         return [
             RetrievedChunk(
                 chunk_id=r["chunk_id"],
                 text=r["text"],
+                score=0.8,
                 chunk_index=r.get("chunk_index", 0),
-                score=0.8,  # PPR-derived
+                start_page=r.get("start_page", 0),
+                end_page=r.get("end_page", 0),
+                source_filename=r.get("filename"),
             )
             for r in data
         ]
 
-    async def _load_triples_between(
-        self, instance_ids: set,
-    ) -> List[RetrievedTriple]:
+    async def _load_triples_between(self, instance_ids: set) -> List[RetrievedTriple]:
         if len(instance_ids) < 2:
             return []
         query = """
         MATCH (src:Instance)-[r]->(tgt:Instance)
-        WHERE src.instance_id IN $ids
-          AND tgt.instance_id IN $ids
-          AND type(r) <> 'MENTIONED_IN'
-          AND type(r) <> 'INSTANCE_OF'
+        WHERE src.instance_id IN $ids AND tgt.instance_id IN $ids
+          AND type(r) <> 'MENTIONED_IN' AND type(r) <> 'INSTANCE_OF'
         RETURN src.name AS s_name, src.class_name AS s_type,
-               type(r) AS predicate,
-               tgt.name AS o_name, tgt.class_name AS o_type
+               type(r) AS predicate, tgt.name AS o_name, tgt.class_name AS o_type
         """
         async with self._sm.session() as s:
             res = await s.run(query, {"ids": list(instance_ids)})

@@ -1,9 +1,3 @@
-"""
-LOCAL стратегия: vector search по чанкам + окружающие тройки.
-
-Самая простая и быстрая — классический RAG.
-"""
-
 import logging
 from typing import List
 
@@ -23,9 +17,7 @@ class VectorSearchStrategy(IRetrievalStrategy):
     """Локальный поиск: vector similarity по чанкам → тройки из чанков."""
 
     def __init__(
-        self,
-        session_manager: Neo4jSessionManager,
-        instance_repo: IInstanceRepository,
+        self, session_manager: Neo4jSessionManager, instance_repo: IInstanceRepository
     ):
         self._sm = session_manager
         self._instance_repo = instance_repo
@@ -35,21 +27,13 @@ class VectorSearchStrategy(IRetrievalStrategy):
         return "vector_search_local"
 
     async def retrieve(
-        self,
-        query: str,
-        query_embedding: List[float],
-        top_k: int = 10,
+        self, query: str, query_embedding: List[float], top_k: int = 10
     ) -> RetrievalResult:
-
-        # 1. Vector search по чанкам
         chunks = await self._search_chunks(query_embedding, top_k)
 
-        # 2. Тройки из найденных чанков
         triples: list[RetrievedTriple] = []
         for chunk in chunks:
-            raw_triples = await self._instance_repo.get_triples_by_chunk(
-                chunk.chunk_id,
-            )
+            raw_triples = await self._instance_repo.get_triples_by_chunk(chunk.chunk_id)
             for t in raw_triples:
                 triples.append(
                     RetrievedTriple(
@@ -63,34 +47,29 @@ class VectorSearchStrategy(IRetrievalStrategy):
                 )
 
         return RetrievalResult(
-            chunks=chunks,
-            triples=triples,
-            metadata={"strategy": self.name},
+            chunks=chunks, triples=triples, metadata={"strategy": self.name}
         )
 
     async def _search_chunks(
-        self,
-        embedding: List[float],
-        limit: int,
+        self, embedding: List[float], limit: int
     ) -> List[RetrievedChunk]:
+        # НОВОЕ: JOIN с Document, чтобы вытащить имя файла
         query = """
-        CALL db.index.vector.queryNodes(
-            'chunk_embedding', $limit, $embedding
-        )
+        CALL db.index.vector.queryNodes('chunk_embedding', $limit, $embedding)
         YIELD node AS c, score
         WHERE score >= 0.5
+        MATCH (d:Document {doc_id: c.doc_id})
         RETURN c.chunk_id    AS chunk_id,
                c.text        AS text,
                c.chunk_index AS chunk_index,
-               c.doc_id      AS doc_id,
+               c.start_page  AS start_page,
+               c.end_page    AS end_page,
+               d.filename    AS filename,
                score
         ORDER BY score DESC
         """
         async with self._sm.session() as s:
-            res = await s.run(query, {
-                "embedding": embedding,
-                "limit": limit,
-            })
+            res = await s.run(query, {"embedding": embedding, "limit": limit})
             data = await res.data()
 
         return [
@@ -99,6 +78,9 @@ class VectorSearchStrategy(IRetrievalStrategy):
                 text=r["text"],
                 score=r["score"],
                 chunk_index=r.get("chunk_index", 0),
+                start_page=r.get("start_page", 0),
+                end_page=r.get("end_page", 0),
+                source_filename=r.get("filename"),
             )
             for r in data
         ]

@@ -10,7 +10,9 @@ from rich.table import Table
 
 console = Console()
 
+
 def register(): ...
+
 
 from src.presentation.cli.app import app  # noqa: E402
 
@@ -20,7 +22,8 @@ def ask_cmd(
     question: str = typer.Argument(..., help="Вопрос"),
     mode: str = typer.Option(
         "hybrid",
-        "--mode", "-m",
+        "--mode",
+        "-m",
         help="Режим: local | global | local_ppr | hybrid",
     ),
     top_k: int = typer.Option(10, "--top-k", "-k"),
@@ -53,28 +56,36 @@ async def _run(question: str, mode_str: str, top_k: int):
             top_k=top_k,
         )
 
-        # Ответ
-        console.print(Panel(
-            response.answer,
-            title=f"[bold green]Ответ[/bold green] ({response.search_mode})",
-            border_style="green",
-        ))
+        console.print(
+            Panel(
+                response.answer,
+                title=f"[bold green]Ответ[/bold green] ({response.search_mode})",
+                border_style="green",
+            )
+        )
 
-        # Источники
         if response.sources:
             table = Table(title="Источники")
-            table.add_column("Файл")
+            table.add_column("Файл", style="cyan")
+            table.add_column("Страницы", style="yellow")
             table.add_column("Чанк")
             table.add_column("Relevance")
             for src in response.sources:
+                pages = (
+                    f"{src.start_page}-{src.end_page}"
+                    if src.start_page != src.end_page
+                    else str(src.start_page)
+                )
+                if src.start_page == 0:
+                    pages = "?"
                 table.add_row(
                     src.filename or "—",
+                    pages,
                     str(src.chunk_index),
                     f"{src.relevance:.3f}",
                 )
             console.print(table)
 
-        # Статистика
         stats = response.context_stats
         console.print(
             f"\n[dim]📊 chunks={stats.get('chunks_count', 0)} "
