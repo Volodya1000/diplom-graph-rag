@@ -6,8 +6,6 @@ services:
     ports:
       - "7474:7474"
       - "7687:7687"
-    env_file:
-      - .env
     environment:
       - NEO4J_AUTH=${NEO4J__USERNAME:-neo4j}/${NEO4J__PASSWORD:-password}
       - NEO4J_server_default__listen__address=0.0.0.0
@@ -33,20 +31,17 @@ services:
       - open-webui:/app/backend/data
     depends_on:
       pipelines:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "3000:8080"
     environment:
-      # Обязательно задайте случайный ключ (минимум 32 символа)
-      # Авто-создание админа
       - DEFAULT_USER_EMAIL=admin@example.com
       - DEFAULT_USER_PASSWORD=12345
       - DEFAULT_USER_ROLE=admin
-      # Pipelines
       - ENABLE_PIPELINES=true
-      - 'WEBUI_SECRET_KEY='
-      - 'OPENAI_API_BASE_URL=http://pipelines:9099'
-      - 'OPENAI_API_KEY=0p3n-w3bu!'
+      - WEBUI_SECRET_KEY=t0p_s3cr3t_k3y_m1n1mum_32_ch4r4ct3rs_l0ng
+      - OPENAI_API_BASE_URL=http://pipelines:9099
+      - OPENAI_API_KEY=0p3n-w3bu!
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
@@ -63,15 +58,8 @@ services:
     environment:
       - PIPELINES_API_KEY=0p3n-w3bu!
       - PIPELINES_DIR=/app/pipelines/
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9099/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
 volumes:
   neo4j_data:
   neo4j_logs:
   open-webui:
-  pipelines: {}
