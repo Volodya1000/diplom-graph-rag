@@ -123,6 +123,16 @@ class OllamaClient(ILLMClient):
             return ExtractionResult()
 
     def _is_bad_entity(self, name: str) -> bool:
+        name_lower = name.lower()
+        stop_words = {
+            "введение",
+            "заключение",
+            "глава",
+            "рисунок",
+            "современные направления",
+        }
+        if name_lower in stop_words:
+            return True
         s = self._settings
         if len(name) < s.min_entity_name_chars or len(name) > s.max_entity_name_chars:
             return True

@@ -43,11 +43,15 @@ def get_entity_extraction_prompt() -> ChatPromptTemplate:
         "9. Без дубликатов. Без самоссылок.\n"
         "10. Если объект перемещается через много мест, "
         "    укажи начальную и конечную точку.\n\n"
+        "НЕ извлекай структурные элементы текста (Введение, Заключение, Глава, Рисунок)."
+        " НЕ извлекай обобщенные фразы (Современные подходы, Техническая сторона, Проблема)."
         "=== ТЕКСТ ===\n"
         "{text}"
     )
 
-    return ChatPromptTemplate.from_messages([
-        ("system", system_message),
-        ("human", human_message),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", system_message),
+            ("human", human_message),
+        ]
+    )

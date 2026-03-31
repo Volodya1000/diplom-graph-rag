@@ -1,4 +1,5 @@
 # config.yml
+
 embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
 
 neo4j:
@@ -10,7 +11,7 @@ neo4j:
 
 ollama:
   model_name: "gpt-oss:120b-cloud"
-  temperature: 0.4
+  temperature: 0.1
   num_ctx: 4096
   is_cloud: true
   local_url: "http://localhost:11434"
@@ -19,7 +20,8 @@ ollama:
 chunking:
   tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2"
   merge_peers: true
-  min_chunk_chars: 50
+  min_chunk_chars: 400 #
+  max_chunk_chars: 1200
   max_heading_chars: 80
 
 parsing:
@@ -36,4 +38,19 @@ extraction:
   max_entity_name_chars: 60
   min_entity_name_chars: 2
   max_triples_per_chunk: 15
-  no_vector_merge_types: ["date"]
+  no_vector_merge_types: ["date", "event"]
+
+  # Жесткий контроль связей (запрет придумывать свои предикаты)
+  strict_allowed_relations: true
+
+  # Пороги для Entity Resolution (разрешения синонимов)
+  levenshtein_threshold: 0.85
+  strict_name_threshold: 0.95
+  semantic_similarity_threshold: 0.88 # Порог косинусного сходства для векторного слияния сущностей
+
+  # Стоп-слова: сущности с этими именами будут игнорироваться (решает проблему "Введение [Event]")
+  entity_stop_words: [
+    "введение", "заключение", "вывод", "глава", "рисунок", "таблица",
+    "современные направления", "техническая сторона", "результат",
+    "цель", "задача", "проблема", "подход", "статья", "документ"
+  ]
