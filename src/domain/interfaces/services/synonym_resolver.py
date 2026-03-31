@@ -1,10 +1,7 @@
-"""Интерфейс для резолвинга синонимов."""
-
 from abc import ABC, abstractmethod
 from typing import List
-
-from src.domain.graph_components.nodes import InstanceNode
-from src.domain.value_objects.synonym_group import SynonymResolutionResult
+from src.domain.models.nodes import InstanceNode
+from src.domain.models.synonym import SynonymResolutionResult
 
 
 class ISynonymResolver(ABC):
@@ -14,13 +11,4 @@ class ISynonymResolver(ABC):
         instances: List[InstanceNode],
         document_context: str,
         text_snippets: str = "",
-    ) -> SynonymResolutionResult:
-        """
-        Анализирует сущности и находит синонимы.
-
-        Args:
-            instances: все сущности документа
-            document_context: краткое описание документа
-            text_snippets: фрагменты текста для контекста
-        """
-        ...
+    ) -> SynonymResolutionResult: ...

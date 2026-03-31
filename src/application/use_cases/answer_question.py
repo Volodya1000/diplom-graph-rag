@@ -1,11 +1,6 @@
-"""
-Use Case: Ответ на вопрос пользователя по графу знаний.
-"""
-
 import logging
-
-from src.domain.value_objects.search_context import SearchMode, RetrievalResult
-from src.domain.value_objects.answer_response import AnswerResponse, SourceReference
+from src.domain.models.search import SearchMode
+from src.domain.models.qa import AnswerResponse, SourceReference
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
@@ -28,30 +23,20 @@ class AnswerQuestionUseCase:
         self.generator = generator
 
     async def execute(
-        self,
-        question: str,
-        mode: SearchMode = SearchMode.HYBRID,
-        top_k: int = 10,
+        self, question: str, mode: SearchMode = SearchMode.HYBRID, top_k: int = 10
     ) -> AnswerResponse:
         logger.info(
             f"❓ Question: «{question[:80]}…» | mode={mode.value} | top_k={top_k}"
         )
-
         query_embedding = await self.embedder.embed_text(question)
         strategy = self.registry.get(mode)
-        logger.info(f"🔍 Стратегия: {strategy.name}")
 
-        retrieval_result: RetrievalResult = await strategy.retrieve(
-            query=question,
-            query_embedding=query_embedding,
-            top_k=top_k,
+        retrieval_result = await strategy.retrieve(
+            query=question, query_embedding=query_embedding, top_k=top_k
         )
-
         context_text = self.context_builder.build(retrieval_result)
-
         answer_text = await self.generator.generate(
-            question=question,
-            context=context_text,
+            question=question, context=context_text
         )
 
         sources = [
@@ -65,7 +50,7 @@ class AnswerQuestionUseCase:
             )
             for c in sorted(
                 retrieval_result.chunks, key=lambda c: c.score, reverse=True
-            )[:5]
+            )
         ]
 
         return AnswerResponse(

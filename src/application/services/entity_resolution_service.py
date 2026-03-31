@@ -1,31 +1,15 @@
-"""
-Оркестратор Entity Resolution.
-
-Изменение: зависит от IInstanceRepository вместо IGraphRepository (ISP).
-"""
-
 import uuid
-import logging
 from typing import Dict, List, Optional, Tuple
-
 import Levenshtein as Lev
-
 from src.domain.utils.normalize_predicate import normalize_predicate
-from src.application.dtos.extraction_dtos import RawExtractedEntity, ResolvedTriple
+from src.domain.models.extraction import RawExtractedEntity, ResolvedTriple
 from src.domain.interfaces.llm.llm_client import ExtractionResult
 from src.domain.ontology.schema import SchemaStatus, SchemaClass, SchemaRelation
-from src.domain.graph_components.nodes import InstanceNode
+from src.domain.models.nodes import InstanceNode
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
-
-logger = logging.getLogger(__name__)
-
-
-# =====================================================================
-#  Кросс-чанковый реестр (без изменений)
-# =====================================================================
 
 
 class EntityRegistry:

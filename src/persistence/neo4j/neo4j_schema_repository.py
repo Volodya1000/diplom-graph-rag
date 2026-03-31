@@ -3,10 +3,6 @@ from typing import List, Dict
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
-from src.persistence.neo4j.mappers.node_mappers import (
-    map_to_schema_class,
-    map_to_schema_relation,
-)
 from .queries.schema_queries import (
     CreateInstanceEmbeddingIndexQuery,
     CreateChunkEmbeddingIndexQuery,
@@ -36,9 +32,7 @@ class Neo4jSchemaRepository(Neo4jBaseRepository, ISchemaRepository):
         logger.info(f"📐 Индексы обеспечены (embedding_dim={dim})")
 
     async def get_tbox_classes(self) -> List[SchemaClass]:
-        query = GetTboxClassesQuery()
-        data = await self._fetch_all(query)
-        return [map_to_schema_class(r) for r in data]
+        return await self._fetch_all(GetTboxClassesQuery())
 
     async def save_tbox_classes(self, classes: List[SchemaClass]) -> None:
         if not classes:
@@ -56,9 +50,7 @@ class Neo4jSchemaRepository(Neo4jBaseRepository, ISchemaRepository):
         await self._execute(CreateSubclassOfEdgesQuery(batch=batch))
 
     async def get_schema_relations(self) -> List[SchemaRelation]:
-        query = GetSchemaRelationsQuery()
-        data = await self._fetch_all(query)
-        return [map_to_schema_relation(r) for r in data]
+        return await self._fetch_all(GetSchemaRelationsQuery())
 
     async def save_schema_relations(self, relations: List[SchemaRelation]) -> None:
         if not relations:
@@ -76,6 +68,5 @@ class Neo4jSchemaRepository(Neo4jBaseRepository, ISchemaRepository):
         await self._execute(SaveSchemaRelationsQuery(batch=batch))
 
     async def get_class_usage_counts(self) -> Dict[str, int]:
-        query = GetClassUsageCountsQuery()
-        data = await self._fetch_all(query)
+        data = await self._fetch_all(GetClassUsageCountsQuery())
         return {r["name"]: r["usage"] for r in data}

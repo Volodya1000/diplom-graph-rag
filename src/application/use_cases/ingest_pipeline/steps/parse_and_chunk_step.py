@@ -1,7 +1,7 @@
 import logging
 import time
 from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import DocumentNode, ChunkNode
 from src.infrastructure.docling.doc_processor import DocProcessor
 
 logger = logging.getLogger(__name__)

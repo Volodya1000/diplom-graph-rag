@@ -1,6 +1,6 @@
 import logging
 from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
-from src.domain.aggregates.document_aggregate import DocumentAggregate
+from src.domain.services.builders.edge_builder import GraphEdgeBuilder
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
 
@@ -20,7 +20,9 @@ class SaveDocumentStructureStep(IIngestStep):
         for chunk in ctx.domain_chunks:
             await self.doc_repo.save_chunk(chunk)
 
-        doc_agg = DocumentAggregate(document=ctx.document, chunks=ctx.domain_chunks)
-        await self.edge_repo.save_edges(doc_agg.build_edges())
+        edges = GraphEdgeBuilder.build_document_edges(
+            document=ctx.document, chunks=ctx.domain_chunks
+        )
+        await self.edge_repo.save_edges(edges)
 
         logger.info(f"💾 Документ + {ctx.total_chunks} чанков сохранены")

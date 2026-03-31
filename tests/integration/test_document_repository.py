@@ -3,14 +3,13 @@ Integration: Neo4jDocumentRepository — документы и чанки.
 """
 
 import pytest
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import DocumentNode, ChunkNode
 
 
 pytestmark = pytest.mark.integration
 
 
 class TestDocumentCRUD:
-
     async def test_save_and_retrieve_document_by_filename(self, doc_repo):
         doc = DocumentNode(doc_id="doc-1", filename="test.pdf")
 
@@ -28,14 +27,15 @@ class TestDocumentCRUD:
 
 
 class TestChunkCRUD:
-
     async def test_save_and_retrieve_chunks_ordered_by_index(self, doc_repo):
         doc = DocumentNode(doc_id="doc-1", filename="test.pdf")
         await doc_repo.save_document(doc)
         chunks = [
             ChunkNode(
-                chunk_id=f"c{i}", doc_id="doc-1",
-                chunk_index=i, text=f"text {i}",
+                chunk_id=f"c{i}",
+                doc_id="doc-1",
+                chunk_index=i,
+                text=f"text {i}",
             )
             for i in [2, 0, 1]  # намеренно не по порядку
         ]
@@ -52,8 +52,11 @@ class TestChunkCRUD:
         doc = DocumentNode(doc_id="doc-1", filename="test.pdf")
         await doc_repo.save_document(doc)
         chunk = ChunkNode(
-            chunk_id="c1", doc_id="doc-1", chunk_index=0,
-            text="hello", embedding=[0.1] * 384,
+            chunk_id="c1",
+            doc_id="doc-1",
+            chunk_index=0,
+            text="hello",
+            embedding=[0.1] * 384,
         )
 
         await doc_repo.save_chunk(chunk)

@@ -1,7 +1,7 @@
 import logging
 from typing import List
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
-from src.domain.graph_components.edges import GraphEdge
+from src.domain.models.edges import GraphEdge
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
 from .queries.edge_queries import SaveEdgeQuery
 

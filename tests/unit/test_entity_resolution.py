@@ -5,8 +5,8 @@ Unit: EntityResolutionMatcher — правила матчинга сущност
 import pytest
 import Levenshtein as Lev
 from src.domain.resolution_rules import EntityResolutionMatcher
-from src.application.dtos.extraction_dtos import RawExtractedEntity
-from src.domain.graph_components.nodes import InstanceNode
+from src.domain.models.extraction import RawExtractedEntity
+from src.domain.models.nodes import InstanceNode
 
 
 @pytest.fixture
@@ -21,20 +21,28 @@ def matcher() -> EntityResolutionMatcher:
 def candidates() -> list[InstanceNode]:
     return [
         InstanceNode(
-            instance_id="id-1", name="Колобок",
-            class_name="Product", chunk_id="c1",
+            instance_id="id-1",
+            name="Колобок",
+            class_name="Product",
+            chunk_id="c1",
         ),
         InstanceNode(
-            instance_id="id-2", name="Старик",
-            class_name="Person", chunk_id="c1",
+            instance_id="id-2",
+            name="Старик",
+            class_name="Person",
+            chunk_id="c1",
         ),
         InstanceNode(
-            instance_id="id-3", name="Старуха",
-            class_name="Person", chunk_id="c1",
+            instance_id="id-3",
+            name="Старуха",
+            class_name="Person",
+            chunk_id="c1",
         ),
         InstanceNode(
-            instance_id="id-4", name="Заяц",
-            class_name="Animal", chunk_id="c2",
+            instance_id="id-4",
+            name="Заяц",
+            class_name="Animal",
+            chunk_id="c2",
         ),
     ]
 
@@ -49,7 +57,6 @@ def _sim(a: str, b: str) -> float:
 
 
 class TestExactMatch:
-
     def test_exact_name_returns_match(self, matcher, candidates):
         target = RawExtractedEntity(name="Колобок", type="Product")
 
@@ -71,7 +78,9 @@ class TestStrictNameMatch:
     def test_one_char_diff_in_long_name_matches(self, matcher):
         # Длина >= 20 → 1 символ разницы даёт sim >= 0.95
         cand_name = "АлександровВеликийПобедитель2025"
-        target_name = "АлександровВеликийПобедитель2026"  # только последняя цифра отличается
+        target_name = (
+            "АлександровВеликийПобедитель2026"  # только последняя цифра отличается
+        )
 
         sim = _sim(target_name, cand_name)
         assert sim >= 0.95, f"Precondition: similarity={sim:.3f} must be ≥0.95"
@@ -101,8 +110,10 @@ class TestThresholdMatch:
 
         candidates = [
             InstanceNode(
-                instance_id="id-1", name=cand_name,
-                class_name="Product", chunk_id="c1",
+                instance_id="id-1",
+                name=cand_name,
+                class_name="Product",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name=target_name, type="Product")
@@ -115,12 +126,16 @@ class TestThresholdMatch:
         cand_name = "Колобочек"
         target_name = "Колобочок"
         sim = _sim(target_name, cand_name)
-        assert 0.85 <= sim < 0.95, f"Precondition: sim={sim:.3f} must be in [0.85, 0.95)"
+        assert 0.85 <= sim < 0.95, (
+            f"Precondition: sim={sim:.3f} must be in [0.85, 0.95)"
+        )
 
         candidates = [
             InstanceNode(
-                instance_id="id-1", name=cand_name,
-                class_name="Product", chunk_id="c1",
+                instance_id="id-1",
+                name=cand_name,
+                class_name="Product",
+                chunk_id="c1",
             ),
         ]
         # Другой тип → правило 3 не срабатывает, правило 2 тоже (< 0.95)
@@ -137,8 +152,10 @@ class TestThresholdMatch:
 
         candidates = [
             InstanceNode(
-                instance_id="id-2", name="Старик",
-                class_name="Person", chunk_id="c1",
+                instance_id="id-2",
+                name="Старик",
+                class_name="Person",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="Старику", type="Person")
@@ -149,7 +166,6 @@ class TestThresholdMatch:
 
 
 class TestNoMatch:
-
     def test_completely_different_name_returns_none(self, matcher, candidates):
         target = RawExtractedEntity(name="Волк", type="Animal")
 
@@ -171,8 +187,10 @@ class TestNoMatch:
 
         candidates = [
             InstanceNode(
-                instance_id="id-x", name="Лист",
-                class_name="Product", chunk_id="c1",
+                instance_id="id-x",
+                name="Лист",
+                class_name="Product",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="Лиса", type="Animal")
@@ -188,8 +206,10 @@ class TestNoMatch:
 
         candidates = [
             InstanceNode(
-                instance_id="id-1", name="Колобок",
-                class_name="Product", chunk_id="c1",
+                instance_id="id-1",
+                name="Колобок",
+                class_name="Product",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="Колобка", type="Animal")
@@ -198,14 +218,17 @@ class TestNoMatch:
 
         assert result is None
 
+
 class TestDateProtection:
     """Даты не мержатся через vector search — только точное совпадение."""
 
     def test_exact_same_date_matches(self, matcher):
         candidates = [
             InstanceNode(
-                instance_id="id-d1", name="2020 год",
-                class_name="Date", chunk_id="c1",
+                instance_id="id-d1",
+                name="2020 год",
+                class_name="Date",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="2020 год", type="Date")
@@ -217,8 +240,10 @@ class TestDateProtection:
     def test_similar_dates_do_not_merge(self, matcher):
         candidates = [
             InstanceNode(
-                instance_id="id-d1", name="2010 год",
-                class_name="Date", chunk_id="c1",
+                instance_id="id-d1",
+                name="2010 год",
+                class_name="Date",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="2020 год", type="Date")
@@ -230,8 +255,10 @@ class TestDateProtection:
     def test_date_with_different_format_no_merge(self, matcher):
         candidates = [
             InstanceNode(
-                instance_id="id-d1", name="2019-2020 годы",
-                class_name="Date", chunk_id="c1",
+                instance_id="id-d1",
+                name="2019-2020 годы",
+                class_name="Date",
+                chunk_id="c1",
             ),
         ]
         target = RawExtractedEntity(name="2020 год", type="Date")

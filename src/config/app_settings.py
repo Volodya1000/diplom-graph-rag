@@ -6,6 +6,7 @@ from src.config.extraction_settings import ExtractionSettings
 from src.config.neo4j_settings import Neo4jSettings
 from src.config.ollama_settings import OllamaSettings
 from src.config.parsing_settings import ParsingSettings
+from src.config.rag_settings import RAGSettings
 
 
 class AppSettings(BaseSettings):
@@ -19,7 +20,7 @@ class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_nested_delimiter="__",  # Магия: NEO4J__PASSWORD переопределит neo4j.password
+        env_nested_delimiter="__",
         extra="ignore",
     )
 
@@ -30,6 +31,7 @@ class AppSettings(BaseSettings):
     chunking: ChunkingSettings
     parsing: ParsingSettings
     extraction: ExtractionSettings
+    rag: RAGSettings = RAGSettings()
 
 
 def load_config(yaml_path: str = "config.yml") -> AppSettings:

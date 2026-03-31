@@ -36,7 +36,7 @@ def ask_cmd(
 async def _run(question: str, mode_str: str, top_k: int):
     from src.di.container import setup_di
     from src.application.use_cases.answer_question import AnswerQuestionUseCase
-    from src.domain.value_objects.search_context import SearchMode
+    from src.domain.models.search import SearchMode
 
     try:
         search_mode = SearchMode(mode_str)

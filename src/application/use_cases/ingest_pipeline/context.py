@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Set, Optional
 
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import DocumentNode, ChunkNode
 
 
 @dataclass

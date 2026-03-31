@@ -4,7 +4,7 @@ from .base import Neo4jQuery
 
 
 @dataclass
-class SaveEdgeQuery(Neo4jQuery):
+class SaveEdgeQuery(Neo4jQuery[Any]):
     relation_type: str
     source_id: str
     target_id: str
@@ -26,3 +26,6 @@ class SaveEdgeQuery(Neo4jQuery):
             "source_id": self.source_id,
             "target_id": self.target_id,
         }
+
+    def map_record(self, record: Dict[str, Any]) -> Any:
+        return None

@@ -1,5 +1,4 @@
 from dishka import Provider, Scope, provide
-
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
@@ -8,7 +7,6 @@ from src.domain.interfaces.repositories.instance_repository import IInstanceRepo
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.llm.llm_client import ILLMClient
-
 from src.infrastructure.docling.doc_processor import DocProcessor
 from src.domain.resolution_rules import EntityResolutionMatcher
 from src.application.services.entity_resolution_service import (
@@ -16,8 +14,6 @@ from src.application.services.entity_resolution_service import (
 )
 from src.application.services.post_processing_service import PostProcessingService
 from src.application.use_cases.seed_tbox import SeedTboxUseCase
-
-# Импорты нового пайплайна
 from src.application.use_cases.ingest_pipeline.context import IIngestStep
 from src.application.use_cases.ingest_pipeline.steps.ensure_tbox_step import (
     EnsureTBoxStep,
@@ -39,15 +35,36 @@ from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
 )
 from src.application.use_cases.ingest_document import IngestDocumentUseCase
 
+# Исправление F821:
+from src.config.extraction_settings import ExtractionSettings
+from src.config.rag_settings import RAGSettings
+
 
 class ApplicationProvider(Provider):
     @provide(scope=Scope.APP)
-    def provide_matcher(self) -> EntityResolutionMatcher:
-        return EntityResolutionMatcher(levenshtein_threshold=0.85)
+    def provide_matcher(
+        self, ext_settings: ExtractionSettings
+    ) -> EntityResolutionMatcher:
+        return EntityResolutionMatcher(
+            levenshtein_threshold=ext_settings.levenshtein_threshold,
+            strict_name_threshold=ext_settings.strict_name_threshold,
+        )
 
     er_orchestrator = provide(EntityResolutionOrchestrator, scope=Scope.APP)
-    post_processor = provide(PostProcessingService, scope=Scope.APP)
     seed_tbox_use_case = provide(SeedTboxUseCase, scope=Scope.APP)
+
+    @provide(scope=Scope.APP)
+    def provide_post_processor(
+        self,
+        instance_repo: IInstanceRepository,
+        doc_repo: IDocumentRepository,
+        synonym_resolver,
+        embedder: IEmbeddingService,
+        rag_settings: RAGSettings,
+    ) -> PostProcessingService:
+        return PostProcessingService(
+            instance_repo, doc_repo, synonym_resolver, embedder, rag_settings
+        )
 
     @provide(scope=Scope.APP)
     def provide_ingest_use_case(

@@ -1,9 +1,8 @@
 import logging
 from typing import List
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import DocumentNode, ChunkNode
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
-from src.persistence.neo4j.mappers.node_mappers import map_to_document, map_to_chunk
 from .queries.document_queries import (
     SaveDocumentQuery,
     SaveChunkQuery,
@@ -20,8 +19,7 @@ class Neo4jDocumentRepository(Neo4jBaseRepository, IDocumentRepository):
 
     async def save_document(self, document: DocumentNode) -> None:
         query = SaveDocumentQuery(
-            doc_id=document.doc_id,
-            props=document.model_dump(exclude={"doc_id"}),
+            doc_id=document.doc_id, props=document.model_dump(exclude={"doc_id"})
         )
         await self._execute(query)
 
@@ -29,16 +27,12 @@ class Neo4jDocumentRepository(Neo4jBaseRepository, IDocumentRepository):
         query = SaveChunkQuery(
             chunk_id=chunk.chunk_id,
             props=chunk.model_dump(exclude={"chunk_id", "embedding"}),
-            embedding=chunk.embedding,
+            embedding=chunk.embedding if chunk.embedding else None,
         )
         await self._execute(query)
 
     async def get_document_by_filename(self, filename: str) -> List[DocumentNode]:
-        query = GetDocumentByFilenameQuery(filename=filename)
-        data = await self._fetch_all(query)
-        return [map_to_document(r) for r in data]
+        return await self._fetch_all(GetDocumentByFilenameQuery(filename=filename))
 
     async def get_chunks_by_document(self, doc_id: str) -> List[ChunkNode]:
-        query = GetChunksByDocumentQuery(doc_id=doc_id)
-        data = await self._fetch_all(query)
-        return [map_to_chunk(r) for r in data]
+        return await self._fetch_all(GetChunksByDocumentQuery(doc_id=doc_id))

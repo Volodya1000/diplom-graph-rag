@@ -1,0 +1,438 @@
+@prefix : <http://example.org/gr_a3#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# ============================================
+# GR_A3 Ontology — T-Box (только схема)
+# ============================================
+:gr_a3 a owl:Ontology ;
+    rdfs:label "GR_A3 Knowledge Graph Ontology" ;
+    rdfs:comment "Экспортировано из проекта gr_a3" .
+
+# ==================== КЛАССЫ ====================
+:Animal a owl:Class ;
+    rdfs:comment "Животные: реальные или персонажи-животные" ;
+    .
+
+:Company a owl:Class ;
+    rdfs:comment "Коммерческие компании и предприятия" ;
+    rdfs:subClassOf :Organization ;
+    .
+
+:Concept a owl:Class ;
+    rdfs:comment "Понятия: термины, методы, технологии, абстракции" ;
+    .
+
+:Date a owl:Class ;
+    rdfs:comment "Даты: конкретные даты, периоды, сроки" ;
+    .
+
+:Event a owl:Class ;
+    rdfs:comment "События: мероприятия, инциденты, встречи, действия" ;
+    .
+
+:GovernmentOrg a owl:Class ;
+    rdfs:comment "Государственные организации и ведомства" ;
+    rdfs:subClassOf :Organization ;
+    .
+
+:Location a owl:Class ;
+    rdfs:comment "Места: города, страны, здания, географические объекты" ;
+    .
+
+:Organization a owl:Class ;
+    rdfs:comment "Организации: компании, учреждения, ведомства" ;
+    .
+
+:Person a owl:Class ;
+    rdfs:comment "Люди: персоналии, должностные лица, авторы, персонажи" ;
+    .
+
+:Product a owl:Class ;
+    rdfs:comment "Продукты: изделия, объекты, еда, предметы, документы" ;
+    .
+
+:Technology a owl:Class ;
+    rdfs:comment "Технологии, фреймворки, языки программирования" ;
+    rdfs:subClassOf :Concept ;
+    .
+
+:Dataset a owl:Class ;
+    .
+
+# ==================== ОБЪЕКТНЫЕ СВОЙСТВА ====================
+:ACTIVE_DURING a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Date ;
+    .
+
+:ADAPTED_FOR a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Product ;
+    .
+
+:ALLIES_WITH a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:APPLICATION_OF a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Technology ;
+    .
+
+:APPLIED_IN a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    rdfs:range :Product ;
+    rdfs:range :Technology ;
+    .
+
+:APPLIED_IN_ORGANIZATION a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Company ;
+    .
+
+:APPLIES_TO a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    rdfs:range :Dataset ;
+    rdfs:range :Product ;
+    .
+
+:APPROXIMATES a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:ASSOCIATED_WITH a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:BASED_ON a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Technology ;
+    .
+
+:BASED_ON_CONCEPT a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:BECAME_STANDARD_IN a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_ANALYZE a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_BE_FINE_TUNED_FOR a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_DESCRIBE a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_INTERPRET a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_SOLVE a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAN_UNDERSTAND a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:CAPABLE_OF_PROCESSING a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:COMBINES_WITH a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:COMPETES_WITH a owl:ObjectProperty ;
+    rdfs:domain :Company ;
+    rdfs:range :Company ;
+    .
+
+:CONTRIBUTES_TO a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:COOPERATES_WITH a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Person ;
+    .
+
+:CREATED a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Product ;
+    rdfs:comment "Человек создал продукт / объект" ;
+    .
+
+:DESCRIBES a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    rdfs:range :Technology ;
+    .
+
+:DETECTS a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:EATS a owl:ObjectProperty ;
+    rdfs:domain :Animal ;
+    rdfs:range :Product ;
+    .
+
+:ENABLED a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Product ;
+    .
+
+:ENABLED_CONCEPT a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:ENSURES a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Concept ;
+    .
+
+:FOCUSES_ON a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Concept ;
+    .
+
+:GENERATES a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Product ;
+    .
+
+:INCLUDES_TECHNOLOGY a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Technology ;
+    .
+
+:INTEGRATES a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Concept ;
+    .
+
+:INTERACTS_WITH a owl:ObjectProperty ;
+    rdfs:domain :Animal ;
+    rdfs:domain :Person ;
+    rdfs:range :Animal ;
+    rdfs:range :Person ;
+    rdfs:range :Product ;
+    rdfs:comment "Человек взаимодействует с другим человеком" ;
+    .
+
+:INTRODUCES a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Concept ;
+    .
+
+:INVOLVES a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Person ;
+    rdfs:range :Product ;
+    rdfs:comment "Событие включает / касается человека" ;
+    .
+
+:KNOWS a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person ;
+    rdfs:comment "Человек знает другого человека" ;
+    .
+
+:LEADS_TO a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:LOCATED_IN a owl:ObjectProperty ;
+    rdfs:domain :Animal ;
+    rdfs:domain :Organization ;
+    rdfs:domain :Person ;
+    rdfs:domain :Product ;
+    rdfs:range :Location ;
+    rdfs:comment "Животное находится в месте" ;
+    .
+
+:MOVED_TO a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Location ;
+    .
+
+:MOVES_ALONG a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Location ;
+    .
+
+:OCCURRED_AT a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Location ;
+    rdfs:comment "Событие произошло в месте" ;
+    .
+
+:OCCURRED_ON a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Date ;
+    rdfs:comment "Событие произошло в дату" ;
+    .
+
+:OPTIMIZED_FOR a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    .
+
+:PARTICIPATED_IN a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Event ;
+    rdfs:comment "Человек участвовал в событии" ;
+    .
+
+:PARTICIPATES_IN a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    rdfs:range :Technology ;
+    .
+
+:PART_OF a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    rdfs:range :Organization ;
+    rdfs:comment "Организация — часть другой организации" ;
+    .
+
+:PRESENTED a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Product ;
+    .
+
+:PRODUCED_BY a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:domain :Technology ;
+    rdfs:range :Company ;
+    rdfs:range :Organization ;
+    rdfs:comment "Продукт произведён организацией" ;
+    .
+
+:PRODUCES a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Product ;
+    rdfs:range :Technology ;
+    rdfs:comment "Организация производит продукт" ;
+    .
+
+:PRODUCT_INTERACTS_WITH_ANIMAL a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Animal ;
+    .
+
+:PUBLISHED a owl:ObjectProperty ;
+    rdfs:domain :GovernmentOrg ;
+    rdfs:range :Product ;
+    .
+
+:RELATED_TO a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Concept ;
+    rdfs:comment "Концепция связана с другой концепцией" ;
+    .
+
+:REQUESTS a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person ;
+    .
+
+:REQUIRES a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Concept ;
+    .
+
+:STARTED a owl:ObjectProperty ;
+    rdfs:domain :GovernmentOrg ;
+    rdfs:range :Event ;
+    .
+
+:STARTED_AT a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Location ;
+    .
+
+:STARTED_IN a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:domain :Event ;
+    rdfs:domain :Product ;
+    rdfs:range :Date ;
+    .
+
+:SUPPORTS a owl:ObjectProperty ;
+    rdfs:domain :Technology ;
+    rdfs:range :Person ;
+    .
+
+:TRANSITIONS_TO a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Concept ;
+    .
+
+:USED_IN a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Technology ;
+    .
+
+:USES a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:domain :Technology ;
+    rdfs:range :Concept ;
+    rdfs:range :Dataset ;
+    rdfs:comment "Продукт использует концепцию / технологию" ;
+    .
+
+:USES_AS_PARTNER a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Technology ;
+    .
+
+:USES_DATASET a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:domain :Product ;
+    rdfs:range :Dataset ;
+    .
+
+:UTILIZES a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Technology ;
+    .
+
+:WORKS_AT a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Organization ;
+    rdfs:comment "Человек работает в организации" ;
+    .

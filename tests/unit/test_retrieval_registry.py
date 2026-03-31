@@ -8,7 +8,7 @@ Unit: RetrievalStrategyRegistry — выбор стратегии по SearchMod
 
 import pytest
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
-from src.domain.value_objects.search_context import SearchMode
+from src.domain.models.search import SearchMode
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 
 
@@ -25,7 +25,6 @@ class _FakeStrategy(IRetrievalStrategy):
 
 
 class TestRetrievalRegistry:
-
     def test_registered_strategy_is_returned(self):
         registry = RetrievalStrategyRegistry()
         strategy = _FakeStrategy("local")

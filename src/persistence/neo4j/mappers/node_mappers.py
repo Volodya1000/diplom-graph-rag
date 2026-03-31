@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 from neo4j.time import DateTime as Neo4jDateTime
 
-from src.domain.graph_components.nodes import DocumentNode, ChunkNode, InstanceNode
+from src.domain.models.nodes import DocumentNode, ChunkNode, InstanceNode
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 

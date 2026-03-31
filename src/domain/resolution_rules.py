@@ -6,8 +6,8 @@ from typing import List, Optional
 
 import Levenshtein
 
-from src.application.dtos.extraction_dtos import RawExtractedEntity
-from src.domain.graph_components.nodes import InstanceNode
+from src.domain.models.extraction import RawExtractedEntity
+from src.domain.models.nodes import InstanceNode
 
 # Типы, для которых vector search НЕ должен работать
 _NO_VECTOR_MERGE_TYPES = {"date"}

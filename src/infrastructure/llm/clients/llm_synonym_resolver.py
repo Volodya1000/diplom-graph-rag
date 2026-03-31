@@ -1,9 +1,5 @@
-"""LLM-резолвер синонимов."""
-
 import logging
-from typing import Dict, List,cast
-from tenacity._utils import LoggerProtocol
-
+from typing import List
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
@@ -14,13 +10,9 @@ from tenacity import (
     retry_if_exception_type,
     before_sleep_log,
 )
-
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
-from src.domain.graph_components.nodes import InstanceNode
-from src.domain.value_objects.synonym_group import (
-    SynonymGroup,
-    SynonymResolutionResult,
-)
+from src.domain.models.nodes import InstanceNode
+from src.domain.models.synonym import SynonymGroup, SynonymResolutionResult
 from src.infrastructure.llm.llm_factory import ChatOllamaFactory
 from src.infrastructure.llm.output_cleaners import clean_json_output
 from src.infrastructure.llm.prompts.synonym_resolution import (
@@ -28,7 +20,6 @@ from src.infrastructure.llm.prompts.synonym_resolution import (
 )
 
 logger = logging.getLogger(__name__)
-_tenacity_logger = cast(LoggerProtocol, logger)
 
 
 class _SynonymGroupParsed(BaseModel):
@@ -50,10 +41,10 @@ class OllamaSynonymResolver(ISynonymResolver):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((Exception,)),
-        before_sleep=before_sleep_log(_tenacity_logger, logging.WARNING),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _invoke_chain(self, chain, params: dict) -> _SynonymOutput:  # type: ignore[type-arg]
+    async def _invoke_chain(self, chain, params: dict) -> _SynonymOutput:
         return await chain.ainvoke(params)
 
     async def find_synonym_groups(
@@ -65,89 +56,53 @@ class OllamaSynonymResolver(ISynonymResolver):
         if len(instances) < 2:
             return SynonymResolutionResult()
 
-        seen: set = set()
-        entity_lines: List[str] = []
-        id_by_name: Dict[str, List[str]] = {}
-
+        seen, entity_lines, id_by_name = set(), [], {}
         for inst in instances:
-            key = (inst.name.lower(), inst.class_name.lower())
-            if key not in seen:
-                seen.add(key)
-                entity_lines.append(
-                    f"• {inst.name} [{inst.class_name}]"
-                )
-            id_by_name.setdefault(
-                inst.name.lower(), [],
-            ).append(inst.instance_id)
-
-        logger.info(
-            f"🔍 Synonym analysis: "
-            f"{len(entity_lines)} unique entities"
-        )
+            if (inst.name.lower(), inst.class_name.lower()) not in seen:
+                seen.add((inst.name.lower(), inst.class_name.lower()))
+                entity_lines.append(f"• {inst.name} [{inst.class_name}]")
+            id_by_name.setdefault(inst.name.lower(), []).append(inst.instance_id)
 
         parser = PydanticOutputParser(pydantic_object=_SynonymOutput)
-        prompt = get_synonym_resolution_prompt()
-        prompt = prompt.partial(
-            format_instructions=parser.get_format_instructions(),
+        prompt = get_synonym_resolution_prompt().partial(
+            format_instructions=parser.get_format_instructions()
         )
-
-        chain = (
-            prompt
-            | self._llm
-            | RunnableLambda(clean_json_output)
-            | parser
-        )
+        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
 
         try:
-            parsed: _SynonymOutput = await self._invoke_chain(
+            parsed = await self._invoke_chain(
                 chain,
                 {
                     "document_context": document_context,
-                    "text_snippets": text_snippets or "(нет)",
+                    "text_snippets": text_snippets,
                     "entities_list": "\n".join(entity_lines),
                 },
             )
+            groups = []
+            for g in parsed.groups:
+                if not g.canonical_name.strip() or not g.aliases:
+                    continue
+                all_ids = {
+                    iid
+                    for name in [g.canonical_name] + g.aliases
+                    for iid in id_by_name.get(name.strip().lower(), [])
+                }
+                groups.append(
+                    SynonymGroup(
+                        canonical_name=g.canonical_name.strip(),
+                        canonical_type=g.canonical_type,
+                        aliases=[a.strip() for a in g.aliases],
+                        instance_ids=list(all_ids),
+                        reason=g.reason,
+                    )
+                )
 
-            groups = self._build_groups(parsed, id_by_name)
             merged = sum(len(g.aliases) for g in groups)
-
-            logger.info(
-                f"🔗 Synonym groups: {len(groups)}, "
-                f"to merge: {merged} entities"
-            )
-
             return SynonymResolutionResult(
                 groups=groups,
                 merged_count=merged,
                 kept_count=len(entity_lines) - merged,
             )
-
         except Exception as e:
             logger.exception(f"❌ Synonym resolution failed: {e}")
             return SynonymResolutionResult()
-
-    @staticmethod
-    def _build_groups(
-        parsed: _SynonymOutput,
-        id_by_name: Dict[str, List[str]],
-    ) -> List[SynonymGroup]:
-        groups: List[SynonymGroup] = []
-        for g in parsed.groups:
-            canonical = g.canonical_name.strip()
-            if not canonical:
-                continue
-            aliases = [a.strip() for a in g.aliases if a.strip()]
-            if not aliases:
-                continue
-            all_ids: set = set()
-            for name_variant in [canonical] + aliases:
-                for iid in id_by_name.get(name_variant.lower(), []):
-                    all_ids.add(iid)
-            groups.append(SynonymGroup(
-                canonical_name=canonical,
-                canonical_type=g.canonical_type,
-                aliases=aliases,
-                instance_ids=list(all_ids),
-                reason=g.reason,
-            ))
-        return groups

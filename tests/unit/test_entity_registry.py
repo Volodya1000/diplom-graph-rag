@@ -10,7 +10,7 @@ Unit: EntityRegistry — кросс-чанковый кеш сущностей.
 
 import pytest
 from src.application.services.entity_resolution_service import EntityRegistry
-from src.domain.graph_components.nodes import InstanceNode
+from src.domain.models.nodes import InstanceNode
 
 
 @pytest.fixture
@@ -21,13 +21,14 @@ def registry() -> EntityRegistry:
 @pytest.fixture
 def kolobok() -> InstanceNode:
     return InstanceNode(
-        instance_id="id-1", name="Колобок",
-        class_name="Product", chunk_id="c1",
+        instance_id="id-1",
+        name="Колобок",
+        class_name="Product",
+        chunk_id="c1",
     )
 
 
 class TestRegistration:
-
     def test_registered_entity_is_found(self, registry, kolobok):
         registry.register("Колобок", kolobok)
 
@@ -38,8 +39,10 @@ class TestRegistration:
 
     def test_first_registration_wins(self, registry, kolobok):
         second = InstanceNode(
-            instance_id="id-2", name="Колобок",
-            class_name="Animal", chunk_id="c2",
+            instance_id="id-2",
+            name="Колобок",
+            class_name="Animal",
+            chunk_id="c2",
         )
 
         registry.register("Колобок", kolobok)
@@ -59,7 +62,6 @@ class TestRegistration:
 
 
 class TestFuzzySearch:
-
     def test_similar_name_found_by_levenshtein(self, registry, kolobok):
         registry.register("Колобок", kolobok)
 
@@ -77,7 +79,6 @@ class TestFuzzySearch:
 
 
 class TestFormatting:
-
     def test_empty_registry_returns_empty_string(self, registry):
         result = registry.format_known_entities()
 
@@ -86,8 +87,10 @@ class TestFormatting:
     def test_format_includes_registered_entities(self, registry, kolobok):
         registry.register("Колобок", kolobok)
         starik = InstanceNode(
-            instance_id="id-2", name="Старик",
-            class_name="Person", chunk_id="c1",
+            instance_id="id-2",
+            name="Старик",
+            class_name="Person",
+            chunk_id="c1",
         )
         registry.register("Старик", starik)
 
