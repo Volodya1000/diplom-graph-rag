@@ -1,15 +1,19 @@
 import uuid
 from typing import Dict, List, Optional, Tuple
 import Levenshtein as Lev
-from src.domain.utils.normalize_predicate import normalize_predicate
-from src.domain.models.extraction import RawExtractedEntity, ResolvedTriple
-from src.domain.interfaces.llm.llm_client import ExtractionResult
-from src.domain.ontology.schema import SchemaStatus, SchemaClass, SchemaRelation
+
+from src.domain.models.extraction import (
+    ExtractionResult,
+    ResolvedTriple,
+    RawExtractedEntity,
+)
 from src.domain.models.nodes import InstanceNode
-from src.domain.resolution_rules import EntityResolutionMatcher
+from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
+from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.utils.normalize_predicate import normalize_predicate
 
 
 class EntityRegistry:
@@ -87,10 +91,14 @@ class EntityResolutionOrchestrator:
         List[ResolvedTriple],
         List[SchemaRelation],
     ]:
+
         instances: List[InstanceNode] = []
-        new_classes: List[SchemaClass] = []
-        tbox_names = {c.name.lower() for c in current_classes}
+        resolved_triples: List[ResolvedTriple] = []
+
+        # Индексируем разрешенные классы (приводим к нижнему регистру для сравнения)
+        allowed_classes = {c.name.lower(): c.name for c in current_classes}
         chunk_name_map: Dict[str, InstanceNode] = {}
+        validator = SchemaValidator(current_classes, current_relations)
 
         # ---- 1. Сущности ----
         for raw in extraction.entities:
@@ -98,37 +106,36 @@ class EntityResolutionOrchestrator:
             name_clean = raw.name.strip()
             name_lower = name_clean.lower()
 
+            # СТРОГОЕ ПРАВИЛО: Если класса нет в T-Box, мы просто пропускаем эту сущность.
+            # Никаких генераций DRAFT или скатывания к Concept.
+            if type_clean.lower() not in allowed_classes:
+                continue
+
+            # Используем каноническое написание класса из T-Box
+            canonical_type = allowed_classes[type_clean.lower()]
+
             existing = registry.find(name_clean)
             if existing:
                 chunk_name_map[name_lower] = existing
                 instances.append(existing)
                 continue
 
-            if type_clean.lower() not in tbox_names:
-                new_classes.append(
-                    SchemaClass(name=type_clean, status=SchemaStatus.DRAFT)
-                )
-                tbox_names.add(type_clean.lower())
-
             embedding = await self.embedder.embed_text(name_clean)
-            candidates = await self.instance_repo.find_candidates_by_vector(
-                embedding,
-            )
+            candidates = await self.instance_repo.find_candidates_by_vector(embedding)
 
             match_id = self.matcher.find_best_match(
-                RawExtractedEntity(name=name_clean, type=type_clean),
+                RawExtractedEntity(name=name_clean, type=canonical_type),
                 candidates,
             )
 
             if match_id:
                 matched = next(
-                    (c for c in candidates if c.instance_id == match_id),
-                    None,
+                    (c for c in candidates if c.instance_id == match_id), None
                 )
                 inst = InstanceNode(
                     instance_id=match_id,
                     name=matched.name if matched else name_clean,
-                    class_name=matched.class_name if matched else type_clean,
+                    class_name=matched.class_name if matched else canonical_type,
                     chunk_id=chunk_id,
                     embedding=embedding,
                 )
@@ -136,7 +143,7 @@ class EntityResolutionOrchestrator:
                 inst = InstanceNode(
                     instance_id=str(uuid.uuid4()),
                     name=name_clean,
-                    class_name=type_clean,
+                    class_name=canonical_type,
                     chunk_id=chunk_id,
                     embedding=embedding,
                 )
@@ -145,16 +152,7 @@ class EntityResolutionOrchestrator:
             chunk_name_map[name_lower] = inst
             instances.append(inst)
 
-        # ---- 2. Валидатор ----
-        all_classes = list(current_classes) + new_classes
-        all_relations = list(current_relations)
-        validator = SchemaValidator(all_classes, all_relations)
-
-        # ---- 3. Тройки ----
-        resolved_triples: List[ResolvedTriple] = []
-        new_relations: List[SchemaRelation] = []
-        seen_rel_keys: set = set()
-
+        # ---- 2. Тройки ----
         for triple in extraction.triples:
             predicate = normalize_predicate(triple.predicate)
             src_inst = self._find_instance(triple.subject, chunk_name_map)
@@ -165,26 +163,12 @@ class EntityResolutionOrchestrator:
             if src_inst.instance_id == tgt_inst.instance_id:
                 continue
 
+            # СТРОГОЕ ПРАВИЛО: Если связь не разрешена T-Box (SchemaValidator),
+            # мы полностью отбрасываем этот триплет. Никаких новых отношений в графе.
             if not validator.is_relation_allowed(
-                src_inst.class_name,
-                predicate,
-                tgt_inst.class_name,
+                src_inst.class_name, predicate, tgt_inst.class_name
             ):
-                rel_key = (
-                    src_inst.class_name.lower(),
-                    predicate,
-                    tgt_inst.class_name.lower(),
-                )
-                if rel_key not in seen_rel_keys:
-                    new_rel = SchemaRelation(
-                        source_class=src_inst.class_name,
-                        relation_name=predicate,
-                        target_class=tgt_inst.class_name,
-                        status=SchemaStatus.DRAFT,
-                    )
-                    new_relations.append(new_rel)
-                    all_relations.append(new_rel)
-                    seen_rel_keys.add(rel_key)
+                continue
 
             resolved_triples.append(
                 ResolvedTriple(
@@ -195,7 +179,9 @@ class EntityResolutionOrchestrator:
                 )
             )
 
-        return instances, new_classes, resolved_triples, new_relations
+        # Возвращаем пустые списки для new_classes и new_relations,
+        # так как мы больше не разрешаем LLM менять схему онтологии на лету.
+        return instances, [], resolved_triples, []
 
     @staticmethod
     def _find_instance(
