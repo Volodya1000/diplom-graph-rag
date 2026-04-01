@@ -32,10 +32,7 @@ def ingest_cmd(
 
 
 async def _run(file_path: Path):
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
+
 
     from src.di.container import setup_di
     from src.application.use_cases.ingest_document import IngestDocumentUseCase
