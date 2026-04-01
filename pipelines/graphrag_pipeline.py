@@ -10,36 +10,39 @@ requirements: requests
 
 import os
 import requests
-from typing import List, Union, Generator, Iterator
+from typing import List, Union, Generator, Iterator, Any
 from pydantic import BaseModel, Field
 
 from logging import getLogger
+
 logger = getLogger(__name__)
 logger.setLevel("DEBUG")
+
 
 class Pipeline:
     class Valves(BaseModel):
         API_BASE_URL: str = Field(
             default="http://host.docker.internal:8000/v1",
-            description="Базовый URL вашего FastAPI"
+            description="Базовый URL вашего FastAPI",
         )
         MODEL_NAME: str = Field(
             default="graphrag-hybrid",
-            description="Имя модели для API (от этого зависит SearchMode)"
+            description="Имя модели для API (от этого зависит SearchMode)",
         )
-        TOP_K: int = Field(
-            default=10,
-            description="Количество возвращаемых чанков"
-        )
+        TOP_K: int = Field(default=10, description="Количество возвращаемых чанков")
 
     def __init__(self):
         # 1. Лучшая практика - НЕ указывать self.id. Он будет взят из имени файла (graphrag_pipeline)
         self.name = "GraphRAG Search"
 
-        # 2. Правильная инициализация Valves, как в эталонном примере
-        self.valves = self.Valves(
-            **{k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()}
-        )
+        # 2. Правильная инициализация Valves.
+        # Собираем параметры в словарь с типом dict[str, Any].
+        # Это успокоит статический тайп-чекер (ошибка str -> int исчезнет),
+        # а Pydantic сам преобразует строки из os.getenv в нужные типы.
+        valves_data: dict[str, Any] = {
+            k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()
+        }
+        self.valves = self.Valves(**valves_data)
 
     async def on_startup(self):
         # Эта функция вызывается при старте сервера пайплайнов
@@ -60,8 +63,9 @@ class Pipeline:
         logger.debug(f"pipe:{self.name} -> User Message: {user_message}")
 
         # Защита от автогенерации заголовков чата самим Open WebUI (как в эталоне)
-        if ("broad tags categorizing" in user_message.lower()) \
-                or ("create a concise" in user_message.lower()):
+        if ("broad tags categorizing" in user_message.lower()) or (
+            "create a concise" in user_message.lower()
+        ):
             logger.debug(f"Title Generation (aborted): {user_message}")
             return "GraphRAG Chat"
 
@@ -72,22 +76,20 @@ class Pipeline:
                 "model": self.valves.MODEL_NAME,
                 "messages": messages,
                 "temperature": body.get("temperature", 0.7),
-                "top_k": self.valves.TOP_K
+                "top_k": self.valves.TOP_K,
             }
 
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
+            headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
             logger.debug(f"Sending request to {endpoint}")
             response = requests.post(endpoint, json=payload, headers=headers)
             response.raise_for_status()
 
             data = response.json()
-            choices = data.get("choices",[])
+            choices = data.get("choices", [])
             if not choices:
                 return "Ошибка: Получен пустой ответ от GraphRAG API."
+
             # Извлекаем текст ответа
             answer = choices[0].get("message", {}).get("content", "")
 

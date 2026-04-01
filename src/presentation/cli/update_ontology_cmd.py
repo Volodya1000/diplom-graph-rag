@@ -6,7 +6,7 @@ from rich.console import Console
 
 console = Console()
 
-def register(): ...  # <--- ЭТО НУЖНО ДОБАВИТЬ
+def register(): ...
 
 from src.presentation.cli.app import app  # noqa: E402
 
