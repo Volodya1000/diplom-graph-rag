@@ -20,7 +20,10 @@ from src.presentation.cli.app import app  # noqa: E402
 @app.command("ingest")
 def ingest_cmd(
     file: Path = typer.Argument(
-        ..., help="Путь к PDF-файлу", exists=True, readable=True,
+        ...,
+        help="Путь к PDF-файлу",
+        exists=True,
+        readable=True,
     ),
 ):
     """Индексация PDF-документа в графовую БД"""
@@ -29,6 +32,11 @@ def ingest_cmd(
 
 
 async def _run(file_path: Path):
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
     from src.di.container import setup_di
     from src.application.use_cases.ingest_document import IngestDocumentUseCase
 
