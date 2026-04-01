@@ -51,7 +51,7 @@ class _ExtractionOutput(BaseModel):
 # ==================== КЛИЕНТ ====================
 class OllamaClient(ILLMClient):
     # Регулярка для отлова галлюцинаций типа "НеразмеченныеКорпусаТекста"
-    _CAMEL_CASE_RE = re.compile(r"^[A-ZА-Я][a-zа-я0-9]+[A-ZА-Я][a-zа-яA-ZА-Я0-9]+$")
+    _CAMEL_CASE_RE = re.compile(r"^[А-Я][а-я]+[А-Я][а-яA-ZА-Я0-9]+$")
 
     def __init__(
         self, factory: ChatOllamaFactory, extraction_settings: ExtractionSettings
@@ -132,18 +132,24 @@ class OllamaClient(ILLMClient):
 
     def _is_bad_entity(self, name: str) -> bool:
         s = self._settings
-        # Проверка длины
+
+        # Проверка длины (слишком короткие/длинные)
         if len(name) < s.min_entity_name_chars or len(name) > s.max_entity_name_chars:
             return True
+
         # Проверка на огромные фразы
         if len(name.split()) > s.max_entity_name_words:
             return True
+
         # Одиночное слово с маленькой буквы (обычно это абстракция: "модель", "система")
         if len(name.split()) == 1 and name[0].islower() and name.isalpha():
             return True
-        # Отлов галлюцинированного CamelCase ("НеразмеченныеКорпуса")
-        if self._CAMEL_CASE_RE.match(name) and " " not in name:
-            # Исключаем популярные IT бренды, если нужно, но в целом это спасет от мусора
-            return True
+
+        # Отлов ТОЛЬКО русских длинных галлюцинаций (CamelCase)
+        # Если слово содержит пробел - это не CamelCase
+        if " " not in name and self._CAMEL_CASE_RE.match(name):
+            # Блокируем, только если длина слова > 12 символов
+            if len(name) > 12:
+                return True
 
         return False
