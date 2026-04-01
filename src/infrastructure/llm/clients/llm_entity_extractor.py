@@ -1,9 +1,10 @@
 import logging
 import re
 from typing import List
-from pydantic import BaseModel, Field
+
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import Runnable, RunnableLambda
+from pydantic import BaseModel, Field
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -30,7 +31,7 @@ from src.infrastructure.llm.prompts.entity_extraction import (
 logger = logging.getLogger(__name__)
 
 
-# ==================== МОДЕЛИ ПАРСИНГА ====================
+# ==================== МОДЕЛИ ПАРСИНГА (Pydantic) ====================
 class _ParsedEntity(BaseModel):
     name: str
     type: str
@@ -55,9 +56,7 @@ class OllamaClient(ILLMClient):
     def __init__(
         self, factory: ChatOllamaFactory, extraction_settings: ExtractionSettings
     ):
-        self._llm = factory.create_json(
-            temperature=0.1
-        )  # Снижена температура для строгости
+        self._llm = factory.create_json(temperature=0.1)
         self._settings = extraction_settings
 
     @retry(
@@ -67,7 +66,7 @@ class OllamaClient(ILLMClient):
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _invoke_chain(self, chain, params: dict) -> _ExtractionOutput:
+    async def _invoke_chain(self, chain: Runnable, params: dict):
         return await chain.ainvoke(params)
 
     async def extract_entities_and_triples(
@@ -77,11 +76,10 @@ class OllamaClient(ILLMClient):
         tbox_relations: List[SchemaRelation],
         known_entities: str = "",
     ) -> ExtractionResult:
-
         validator = SchemaValidator(tbox_classes, tbox_relations)
         parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
         prompt = get_entity_extraction_prompt().partial(
-            format_instructions=parser.get_format_instructions()
+            format_instructions=parser.get_format_instructions()  # <- ЭТА СТРОКА ВАЖНА!
         )
         chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
 
@@ -96,46 +94,35 @@ class OllamaClient(ILLMClient):
                 },
             )
 
-            # 1. Собираем и валидируем триплеты
-            triples = []
-            valid_nodes_in_triples = set()
+            entities = [
+                RawExtractedEntity(name=e.name.strip(), type=e.type.strip())
+                for e in parsed.entities
+                if e.name.strip()
+                and e.type.strip()
+                and not self._is_bad_entity(e.name.strip())
+            ]
+            valid_names = {e.name.lower() for e in entities}
 
+            triples = []
             for t in parsed.triples:
                 subj, pred, obj = (
                     t.subject.strip(),
                     t.predicate.strip(),
                     t.object.strip(),
                 )
-                if subj and pred and obj:
+                if (
+                    subj
+                    and pred
+                    and obj
+                    and (subj.lower() in valid_names or subj in known_entities)
+                    and (obj.lower() in valid_names or obj in known_entities)
+                ):
                     triples.append(
                         RawExtractedTriple(subject=subj, predicate=pred, object=obj)
                     )
-                    valid_nodes_in_triples.add(subj.lower())
-                    valid_nodes_in_triples.add(obj.lower())
 
             if len(triples) > self._settings.max_triples_per_chunk:
                 triples = triples[: self._settings.max_triples_per_chunk]
-
-            # 2. Собираем сущности (УДАЛЯЕМ СИРОТ)
-            entities = []
-            for e in parsed.entities:
-                name = e.name.strip()
-                if not name or not e.type.strip():
-                    continue
-
-                # Структурный фильтр
-                if self._is_bad_entity(name):
-                    continue
-
-                # ФИЛЬТР СИРОТ: Если сущность не участвует ни в одной связи, она бесполезна для графа
-                # Мы сохраняем её только если она есть в триплетах текущего чанка ИЛИ была известна ранее
-                if (
-                    name.lower() not in valid_nodes_in_triples
-                    and name not in known_entities
-                ):
-                    continue
-
-                entities.append(RawExtractedEntity(name=name, type=e.type.strip()))
 
             return ExtractionResult(entities=entities, triples=triples)
 

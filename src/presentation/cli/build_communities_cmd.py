@@ -9,7 +9,9 @@ from rich.table import Table
 
 console = Console()
 
+
 def register(): ...
+
 
 from src.presentation.cli.app import app  # noqa: E402
 
@@ -17,31 +19,36 @@ from src.presentation.cli.app import app  # noqa: E402
 @app.command("build-communities")
 def build_communities_cmd(
     algorithm: str = typer.Option(
-        "leiden", "--algo", "-a",
+        "leiden",
+        "--algo",
+        "-a",
         help="Алгоритм: leiden | louvain",
     ),
     min_size: int = typer.Option(
-        2, "--min-size",
+        3,
+        "--min-size",
         help="Мин. размер сообщества для генерации summary",
     ),
     no_summaries: bool = typer.Option(
-        False, "--no-summaries",
+        False,
+        "--no-summaries",
         help="Пропустить генерацию summaries",
     ),
     force: bool = typer.Option(
-        False, "--force", "-f",
+        False,
+        "--force",
+        "-f",
         help="Пересоздать проекцию и пересчитать",
     ),
     show: bool = typer.Option(
-        False, "--show", "-s",
+        False,
+        "--show",
+        "-s",
         help="Показать сообщества после создания",
     ),
 ):
     """Запуск community detection и генерация summaries"""
-    console.print(
-        f"[bold cyan]🧩 Community Detection[/bold cyan] "
-        f"({algorithm})"
-    )
+    console.print(f"[bold cyan]🧩 Community Detection[/bold cyan] ({algorithm})")
     asyncio.run(_run(algorithm, min_size, no_summaries, force, show))
 
 

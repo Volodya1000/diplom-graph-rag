@@ -157,3 +157,25 @@ class PersonalizedPageRankQuery(Neo4jQuery[Dict[str, Any]]):
 
     def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
         return record
+
+
+@dataclass
+class CleanupSmallCommunitiesQuery(Neo4jQuery[int]):
+    min_size: int
+
+    def get_query(self) -> str:
+        return """
+            MATCH (i:Instance)
+            WHERE i.community_id IS NOT NULL
+            WITH i.community_id AS cid, collect(i) AS nodes
+            WHERE size(nodes) < $min_size
+            UNWIND nodes AS n
+            REMOVE n.community_id
+            RETURN count(n) AS removed_count
+        """
+
+    def get_params(self) -> Dict[str, Any]:
+        return {"min_size": self.min_size}
+
+    def map_record(self, record: Dict[str, Any]) -> int:
+        return record.get("removed_count", 0)

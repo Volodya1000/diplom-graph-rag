@@ -1,8 +1,8 @@
 import logging
 from typing import List
+
+from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.runnables import RunnableLambda
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -10,11 +10,11 @@ from tenacity import (
     retry_if_exception_type,
     before_sleep_log,
 )
+
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
 from src.domain.models.nodes import InstanceNode
 from src.domain.models.synonym import SynonymGroup, SynonymResolutionResult
 from src.infrastructure.llm.llm_factory import ChatOllamaFactory
-from src.infrastructure.llm.output_cleaners import clean_json_output
 from src.infrastructure.llm.prompts.synonym_resolution import (
     get_synonym_resolution_prompt,
 )
@@ -44,7 +44,7 @@ class OllamaSynonymResolver(ISynonymResolver):
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _invoke_chain(self, chain, params: dict) -> _SynonymOutput:
+    async def _invoke_chain(self, chain: Runnable, params: dict) -> _SynonymOutput:
         return await chain.ainvoke(params)
 
     async def find_synonym_groups(
@@ -58,19 +58,22 @@ class OllamaSynonymResolver(ISynonymResolver):
 
         seen, entity_lines, id_by_name = set(), [], {}
         for inst in instances:
-            if (inst.name.lower(), inst.class_name.lower()) not in seen:
-                seen.add((inst.name.lower(), inst.class_name.lower()))
+            key = (inst.name.lower(), inst.class_name.lower())
+            if key not in seen:
+                seen.add(key)
                 entity_lines.append(f"• {inst.name} [{inst.class_name}]")
             id_by_name.setdefault(inst.name.lower(), []).append(inst.instance_id)
 
-        parser = PydanticOutputParser(pydantic_object=_SynonymOutput)
-        prompt = get_synonym_resolution_prompt().partial(
-            format_instructions=parser.get_format_instructions()
+        # === УПРОЩЕНИЕ: with_structured_output ===
+        structured_llm = self._llm.with_structured_output(
+            _SynonymOutput, method="json_mode"
         )
-        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
+        prompt = get_synonym_resolution_prompt()
+
+        chain = prompt | structured_llm
 
         try:
-            parsed = await self._invoke_chain(
+            parsed: _SynonymOutput = await self._invoke_chain(
                 chain,
                 {
                     "document_context": document_context,
@@ -78,6 +81,7 @@ class OllamaSynonymResolver(ISynonymResolver):
                     "entities_list": "\n".join(entity_lines),
                 },
             )
+
             groups = []
             for g in parsed.groups:
                 if not g.canonical_name.strip() or not g.aliases:
@@ -103,6 +107,7 @@ class OllamaSynonymResolver(ISynonymResolver):
                 merged_count=merged,
                 kept_count=len(entity_lines) - merged,
             )
+
         except Exception as e:
             logger.exception(f"❌ Synonym resolution failed: {e}")
             return SynonymResolutionResult()

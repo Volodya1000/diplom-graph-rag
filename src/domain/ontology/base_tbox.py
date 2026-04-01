@@ -1,13 +1,9 @@
 """
 Базовый T-Box — ядро онтологии.
 
-Классы (с иерархией) + допустимые отношения.
 """
 
-from src.domain.ontology.schema import SchemaStatus, SchemaClass, SchemaRelation
-# ===================================================================
-# КЛАССЫ
-# ===================================================================
+from src.domain.ontology.schema import SchemaStatus, SchemaClass
 
 BASE_TBOX_CLASSES: list[SchemaClass] = [
     # ---- Верхний уровень ----
@@ -70,172 +66,43 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         description="Технологии, фреймворки, языки программирования",
         parent="Concept",
     ),
-]
-
-# ===================================================================
-# ОТНОШЕНИЯ
-# ===================================================================
-
-BASE_TBOX_RELATIONS: list[SchemaRelation] = [
-    # --- Person ---
-    SchemaRelation(
-        source_class="Person",
-        relation_name="WORKS_AT",
-        target_class="Organization",
+    SchemaClass(
+        name="TimePeriod",
         status=SchemaStatus.CORE,
-        description="Человек работает в организации",
+        parent="Date",
+        description="Временные интервалы: периоды, сроки, эпохи, диапазоны дат",
     ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="LOCATED_IN",
-        target_class="Location",
+    SchemaClass(
+        name="Address",
         status=SchemaStatus.CORE,
-        description="Человек находится / проживает в месте",
+        parent="Location",
+        description="Конкретный адрес, координаты, помещение, офис",
     ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="PARTICIPATED_IN",
-        target_class="Event",
+    SchemaClass(
+        name="Role",
         status=SchemaStatus.CORE,
-        description="Человек участвовал в событии",
+        description="Должность, роль, профессия (CEO, разработчик, директор и т.д.)",
     ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="CREATED",
-        target_class="Product",
+    SchemaClass(
+        name="Project",
         status=SchemaStatus.CORE,
-        description="Человек создал продукт / объект",
+        description="Проекты, инициативы, программы, задачи",
     ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="KNOWS",
-        target_class="Person",
+    SchemaClass(
+        name="Document",
         status=SchemaStatus.CORE,
-        description="Человек знает другого человека",
+        description="Документы, контракты, публикации, отчёты",
     ),
-    # --- Organization ---
-    SchemaRelation(
-        source_class="Organization",
-        relation_name="LOCATED_IN",
-        target_class="Location",
+    SchemaClass(
+        name="Startup",
         status=SchemaStatus.CORE,
-        description="Организация расположена в месте",
+        parent="Company",
+        description="Стартапы и молодые компании",
     ),
-    SchemaRelation(
-        source_class="Organization",
-        relation_name="PRODUCES",
-        target_class="Product",
+    SchemaClass(
+        name="Subsidiary",
         status=SchemaStatus.CORE,
-        description="Организация производит продукт",
-    ),
-    SchemaRelation(
-        source_class="Organization",
-        relation_name="PART_OF",
-        target_class="Organization",
-        status=SchemaStatus.CORE,
-        description="Организация — часть другой организации",
-    ),
-    # --- Event ---
-    SchemaRelation(
-        source_class="Event",
-        relation_name="OCCURRED_AT",
-        target_class="Location",
-        status=SchemaStatus.CORE,
-        description="Событие произошло в месте",
-    ),
-    SchemaRelation(
-        source_class="Event",
-        relation_name="OCCURRED_ON",
-        target_class="Date",
-        status=SchemaStatus.CORE,
-        description="Событие произошло в дату",
-    ),
-    SchemaRelation(
-        source_class="Event",
-        relation_name="INVOLVES",
-        target_class="Person",
-        status=SchemaStatus.CORE,
-        description="Событие включает / касается человека",
-    ),
-    # --- Product ---
-    SchemaRelation(
-        source_class="Product",
-        relation_name="USES",
-        target_class="Concept",
-        status=SchemaStatus.CORE,
-        description="Продукт использует концепцию / технологию",
-    ),
-    SchemaRelation(
-        source_class="Product",
-        relation_name="PRODUCED_BY",
-        target_class="Organization",
-        status=SchemaStatus.CORE,
-        description="Продукт произведён организацией",
-    ),
-    SchemaRelation(
-        source_class="Product",
-        relation_name="LOCATED_IN",
-        target_class="Location",
-        status=SchemaStatus.CORE,
-        description="Продукт / объект находится в месте",
-    ),
-    # --- Concept ---
-    SchemaRelation(
-        source_class="Concept",
-        relation_name="RELATED_TO",
-        target_class="Concept",
-        status=SchemaStatus.CORE,
-        description="Концепция связана с другой концепцией",
-    ),
-    # --- Animal ---
-    SchemaRelation(
-        source_class="Animal",
-        relation_name="LOCATED_IN",
-        target_class="Location",
-        status=SchemaStatus.CORE,
-        description="Животное находится в месте",
-    ),
-    SchemaRelation(
-        source_class="Animal",
-        relation_name="INTERACTS_WITH",
-        target_class="Person",
-        status=SchemaStatus.CORE,
-        description="Животное взаимодействует с человеком",
-    ),
-    SchemaRelation(
-        source_class="Animal",
-        relation_name="INTERACTS_WITH",
-        target_class="Product",
-        status=SchemaStatus.CORE,
-        description="Животное взаимодействует с объектом",
-    ),
-    SchemaRelation(
-        source_class="Animal",
-        relation_name="INTERACTS_WITH",
-        target_class="Animal",
-        status=SchemaStatus.CORE,
-        description="Животное взаимодействует с другим животным",
-    ),
-    # --- Универсальные ---
-    SchemaRelation(
-        source_class="Person",
-        relation_name="INTERACTS_WITH",
-        target_class="Person",
-        status=SchemaStatus.CORE,
-        description="Человек взаимодействует с другим человеком",
-    ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="INTERACTS_WITH",
-        target_class="Animal",
-        status=SchemaStatus.CORE,
-        description="Человек взаимодействует с животным",
-    ),
-    SchemaRelation(
-        source_class="Person",
-        relation_name="INTERACTS_WITH",
-        target_class="Product",
-        status=SchemaStatus.CORE,
-        description="Человек взаимодействует с объектом",
+        parent="Company",
+        description="Дочерние компании и филиалы",
     ),
 ]

@@ -14,6 +14,7 @@ from src.persistence.neo4j.queries.analytics_queries import (
     GetCommunityMembersQuery,
     SaveCommunitySummaryQuery,
     PersonalizedPageRankQuery,
+    CleanupSmallCommunitiesQuery,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,3 +87,12 @@ class Neo4jGDSAnalyticsService(Neo4jBaseRepository, IGraphAnalyticsService):
                 top_k=top_k,
             )
         )
+
+    async def cleanup_small_communities(self, min_size: int) -> int:
+        data = await self._fetch_all(CleanupSmallCommunitiesQuery(min_size=min_size))
+        count = data[0] if data else 0
+        if count > 0:
+            logger.info(
+                f"🧹 Удалено {count} узлов из слишком мелких сообществ (размер < {min_size})"
+            )
+        return count

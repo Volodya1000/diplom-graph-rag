@@ -221,15 +221,23 @@ class TestNamingRules:
         assert "works-at" in " ".join(result.errors)
 
 
-class TestNoSelfReference:
-    def test_self_referencing_relation_rejected(
+class TestSelfReferenceAllowed:
+    def test_self_referencing_relation_allowed_in_schema(
         self, validator, current_classes, current_relations
     ):
+        """
+        На уровне T-Box (схемы) самоссылки разрешены.
+        Например, Person -> KNOWS -> Person или Organization -> PART_OF -> Organization.
+        """
         proposed_rels = current_relations + [
             SchemaRelation(
-                source_class="Person", relation_name="KNOWS", target_class="Person"
+                source_class="Person",
+                relation_name="KNOWS",
+                target_class="Person",
+                status=SchemaStatus.DRAFT,
             )
         ]
+
         result = validator.validate_merge(
             current_classes,
             current_relations,
@@ -237,5 +245,15 @@ class TestNoSelfReference:
             proposed_rels,
             class_usage={},
         )
-        assert not result.is_valid
-        assert "Самоссылка" in " ".join(result.errors)
+
+        # 1. Валидация должна пройти успешно
+        assert result.is_valid is True
+        assert len(result.errors) == 0
+
+        # 2. Отношение должно присутствовать в итоговом списке
+        knows_rel = next(
+            (r for r in result.merged_relations if r.relation_name == "KNOWS"), None
+        )
+        assert knows_rel is not None
+        assert knows_rel.source_class == "Person"
+        assert knows_rel.target_class == "Person"

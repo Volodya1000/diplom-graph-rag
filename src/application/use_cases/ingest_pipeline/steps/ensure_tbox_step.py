@@ -16,7 +16,8 @@ class EnsureTBoxStep(IIngestStep):
             return
 
         logger.warning("⚠️ T-Box пуст — автоинициализация…")
-        from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS
+        from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES
+        from src.domain.ontology.base_tbox_relations import BASE_TBOX_RELATIONS
 
         await self.schema_repo.save_tbox_classes(BASE_TBOX_CLASSES)
         await self.schema_repo.save_schema_relations(BASE_TBOX_RELATIONS)

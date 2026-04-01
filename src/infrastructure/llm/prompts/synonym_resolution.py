@@ -1,5 +1,3 @@
-"""Промпт для поиска синонимов среди сущностей документа."""
-
 from langchain_core.prompts import ChatPromptTemplate
 
 _SYSTEM = (
@@ -21,9 +19,7 @@ _SYSTEM = (
     "  • Российская Федерация / Россия / РФ\n"
     "  • СберБанк / Сбер / Сбербанк\n"
     "  • Александр Пушкин / А.С. Пушкин / Пушкин\n\n"
-    "Отвечай ТОЛЬКО валидным JSON. "
-    "Без комментариев, тегов <think>.\n\n"
-    "{format_instructions}"
+    "Отвечай ТОЛЬКО валидным JSON. Без комментариев, тегов <think>."
 )
 
 _HUMAN = (
@@ -36,7 +32,6 @@ _HUMAN = (
     "Найди группы синонимов среди сущностей выше. "
     "Если синонимов нет — верни {{\"groups\": []}}."
 )
-
 
 def get_synonym_resolution_prompt() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_messages([

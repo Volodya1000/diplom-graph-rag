@@ -6,7 +6,8 @@ Use Case: Инициализация базового T-Box + индексов.
 
 import logging
 
-from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES, BASE_TBOX_RELATIONS
+from src.domain.ontology.base_tbox import BASE_TBOX_CLASSES
+from src.domain.ontology.base_tbox_relations import BASE_TBOX_RELATIONS
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,7 @@ class SeedTboxUseCase:
         classes_to_save = (
             list(BASE_TBOX_CLASSES)
             if force
-            else [c for c in BASE_TBOX_CLASSES
-                  if c.name.lower() not in existing_names]
+            else [c for c in BASE_TBOX_CLASSES if c.name.lower() not in existing_names]
         )
         if classes_to_save:
             await self.schema_repo.save_tbox_classes(classes_to_save)
@@ -35,27 +35,31 @@ class SeedTboxUseCase:
         # ---- Отношения ----
         current_rels = await self.schema_repo.get_schema_relations()
         existing_keys = {
-            (r.source_class.lower(),
-             r.relation_name.upper(),
-             r.target_class.lower())
+            (r.source_class.lower(), r.relation_name.upper(), r.target_class.lower())
             for r in current_rels
         }
 
         rels_to_save = (
             list(BASE_TBOX_RELATIONS)
             if force
-            else [r for r in BASE_TBOX_RELATIONS
-                  if (r.source_class.lower(),
-                      r.relation_name.upper(),
-                      r.target_class.lower()) not in existing_keys]
+            else [
+                r
+                for r in BASE_TBOX_RELATIONS
+                if (
+                    r.source_class.lower(),
+                    r.relation_name.upper(),
+                    r.target_class.lower(),
+                )
+                not in existing_keys
+            ]
         )
         if rels_to_save:
             await self.schema_repo.save_schema_relations(rels_to_save)
 
         total = len(classes_to_save) + len(rels_to_save)
         logger.info(
-            f"✅ T-Box: {len(classes_to_save)} классов + "
-            f"{len(rels_to_save)} отношений"
-            if total else "✅ T-Box уже содержит все базовые элементы"
+            f"✅ T-Box: {len(classes_to_save)} классов + {len(rels_to_save)} отношений"
+            if total
+            else "✅ T-Box уже содержит все базовые элементы"
         )
         return total

@@ -33,13 +33,13 @@ class BuildCommunitiesUseCase:
     async def execute(
         self,
         algorithm: str = "leiden",
-        min_community_size: int = 2,
+        min_community_size: int = 3,
         generate_summaries: bool = True,
         force: bool = False,
     ) -> dict:
         logger.info(
             f"🧩 Build communities: "
-            f"algorithm={algorithm}, force={force}"
+            f"algorithm={algorithm}, force={force}, min_size={min_community_size}"
         )
 
         # 1. Проекция
@@ -47,33 +47,31 @@ class BuildCommunitiesUseCase:
             await self._analytics.drop_projection()
         await self._analytics.ensure_projection()
 
-        # 2. Community detection
-        community_count = await self._analytics.detect_communities(
-            algorithm=algorithm,
+        # 2. Community detection (Сырой прогон)
+        raw_count = await self._analytics.detect_communities(algorithm=algorithm)
+
+        # 3. ЖЕСТКАЯ ОЧИСТКА: удаляем мелкий мусор
+        await self._analytics.cleanup_small_communities(min_size=min_community_size)
+
+        # 4. Получаем ИТОГОВЫЙ список валидных сообществ
+        communities = await self._analytics.get_communities()
+        valid_count = len(communities)
+        logger.info(
+            f"🧩 Итоговых валидных сообществ: {valid_count} (было до очистки: {raw_count})"
         )
-        logger.info(f"🧩 Найдено сообществ: {community_count}")
 
         if not generate_summaries:
             return {
-                "communities": community_count,
+                "communities": valid_count,
                 "summaries_generated": 0,
             }
 
-        # 3. Генерация summaries
-        communities = await self._analytics.get_communities()
+        # 5. Генерация summaries (теперь eligible - это все оставшиеся)
         summaries_count = 0
-
-        # В цикле генерации summaries:
-        eligible = [
-            c for c in communities
-            if c.entity_count >= min_community_size
-            and (force or not c.summary)
-        ]
+        eligible = [c for c in communities if (force or not c.summary)]
 
         for i, comm in enumerate(eligible, 1):
-            members = await self._analytics.get_community_members(
-                comm.community_id,
-            )
+            members = await self._analytics.get_community_members(comm.community_id)
             if not members:
                 continue
 
@@ -99,7 +97,7 @@ class BuildCommunitiesUseCase:
             )
 
         result = {
-            "communities": community_count,
+            "communities": valid_count,
             "summaries_generated": summaries_count,
         }
         logger.info(f"✅ Build communities done: {result}")
@@ -110,24 +108,18 @@ class BuildCommunitiesUseCase:
         community_id: int,
         members: list[dict],
     ) -> str:
-        members_text = "\n".join(
-            f"• {m['name']} [{m['class_name']}]"
-            for m in members
-        )
+        members_text = "\n".join(f"• {m['name']} [{m['class_name']}]" for m in members)
 
         relations_lines = []
         for m in members:
             for rel in m.get("relations", []):
                 if rel.get("target"):
                     relations_lines.append(
-                        f"  {m['name']} —{rel['predicate']}→ "
-                        f"{rel['target']}"
+                        f"  {m['name']} —{rel['predicate']}→ {rel['target']}"
                     )
 
         relations_text = (
-            "\n".join(relations_lines)
-            if relations_lines
-            else "(нет связей)"
+            "\n".join(relations_lines) if relations_lines else "(нет связей)"
         )
 
         return COMMUNITY_CONTEXT_TEMPLATE.format(

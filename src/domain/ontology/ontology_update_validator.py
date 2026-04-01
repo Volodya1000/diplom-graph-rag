@@ -71,11 +71,6 @@ class OntologyUpdateValidator:
                     f"Неверный формат отношения: {r.relation_name} (UPPER_SNAKE_CASE)"
                 )
 
-        # 6. Нет самоссылок
-        for r in proposed_relations:
-            if r.source_class == r.target_class:
-                errors.append(f"Самоссылка в отношении {r.relation_name}")
-
         return ValidationResult(
             is_valid=len(errors) == 0,
             errors=errors,

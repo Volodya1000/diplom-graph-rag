@@ -51,6 +51,7 @@ from .analytics_queries import (
     GetCommunityMembersQuery,
     SaveCommunitySummaryQuery,
     PersonalizedPageRankQuery,
+    CleanupSmallCommunitiesQuery,
 )
 
 __all__ = [

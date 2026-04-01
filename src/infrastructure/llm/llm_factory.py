@@ -4,10 +4,8 @@
 
 import logging
 from typing import Optional
-
 from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
-
 from src.config.ollama_settings import OllamaSettings
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,6 @@ class ChatOllamaFactory:
     ) -> ChatOllama:
         s = self._settings
         temp = temperature if temperature is not None else s.temperature
-
         if json_mode:
             return ChatOllama(
                 model=s.model_name,
@@ -52,7 +49,6 @@ class ChatOllamaFactory:
                 format="json",
                 verbose=False,
             )
-
         return ChatOllama(
             model=s.model_name,
             base_url=s.base_url,

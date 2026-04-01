@@ -37,3 +37,6 @@ class IGraphAnalyticsService(ABC):
         damping_factor: float = 0.85,
         projection_name: str = "instance_graph",
     ) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def cleanup_small_communities(self, min_size: int) -> int: ...
