@@ -1,6 +1,8 @@
 """Точка входа для FastAPI."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
@@ -11,6 +13,9 @@ import logging
 
 setup_logging(level=logging.INFO, disable_verbose=True)
 logger = logging.getLogger(__name__)
+
+UPLOAD_DIR = Path("data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Создаём контейнер один раз
 container = setup_di()

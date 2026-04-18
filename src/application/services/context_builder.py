@@ -47,7 +47,16 @@ class ContextBuilder:
                 if chunk.start_page == 0:
                     pages_info = "Стр. неизвестна"
 
-                header = f"--- Фрагмент #{chunk.chunk_index} [Документ: {src}, {pages_info}] ---"
+                if chunk.headings and chunk.headings:
+                    # Полный путь заголовков через " → "
+                    headings_path = " → ".join(chunk.headings)
+                    header = (
+                        f"--- Фрагмент #{chunk.chunk_index} "
+                        f"[Документ: {src}, {pages_info}, "
+                        f'Заголовки: "{headings_path}"] ---'
+                    )
+                else:
+                    header = f"--- Фрагмент #{chunk.chunk_index} [Документ: {src}, {pages_info}] ---"
                 lines.append(f"{header}\n{chunk.text}")
                 used += len(chunk.text)
 

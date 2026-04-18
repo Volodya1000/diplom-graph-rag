@@ -32,7 +32,7 @@ class Pipeline:
         TOP_K: int = Field(default=10, description="Количество возвращаемых чанков")
 
     def __init__(self):
-        self.name = "GraphRAG Search"
+        self.name = 'Ассистент по базе знаний ЗАО "Альфа-Банк"'
 
         # 2. Правильная инициализация Valves.
         # Собираем параметры в словарь с типом dict[str, Any].
@@ -101,21 +101,40 @@ class Pipeline:
 
             if sources:
                 extra_info.append("\n\n---\n**📚 Источники:**")
-                for i, src in enumerate(sources, 1):
+
+                # Группируем по файлу
+                from collections import defaultdict
+
+                file_to_pages = defaultdict(list)
+
+                for src in sources:
                     filename = src.get("filename") or "Неизвестный файл"
                     start_page = src.get("start_page", 0)
                     end_page = src.get("end_page", 0)
 
                     if start_page == 0:
-                        pages = "Стр. неизвестна"
+                        pages_str = "Стр. неизвестна"
                     elif start_page == end_page:
-                        pages = f"Стр. {start_page}"
+                        pages_str = f"Стр. {start_page}"
                     else:
-                        pages = f"Стр. {start_page}-{end_page}"
+                        pages_str = f"Стр. {start_page}-{end_page}"
 
-                    relevance = src.get("relevance", 0.0)
+                    file_to_pages[filename].append(pages_str)
+
+                for i, (filename, pages_list) in enumerate(file_to_pages.items(), 1):
+                    pages_unique = sorted(set(pages_list))  # убираем дубли страниц
+                    pages = ", ".join(pages_unique)
+                    # Можно взять максимальный score среди чанков этого файла
+                    max_relevance = max(
+                        (
+                            s.get("relevance", 0.0)
+                            for s in sources
+                            if s.get("filename") == filename
+                        ),
+                        default=0.0,
+                    )
                     extra_info.append(
-                        f"{i}. {filename} ({pages}) | *Score: {relevance:.2f}*"
+                        f"{i}. {filename} ({pages}) | *Score: {max_relevance:.2f}*"
                     )
 
             if stats:
@@ -127,7 +146,7 @@ class Pipeline:
 
             # Добавляем источники к тексту ответа
             if extra_info:
-                answer += "\n".join(extra_info)
+                answer += "\n\n" + "\n".join(extra_info)
 
             return answer
 

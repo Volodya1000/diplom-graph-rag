@@ -48,7 +48,7 @@ class VectorSearchStrategy(IRetrievalStrategy):
         YIELD node AS c, score
         WHERE score >= 0.5
         MATCH (d:Document {doc_id: c.doc_id})
-        RETURN c.chunk_id AS chunk_id, c.text AS text, c.chunk_index AS chunk_index, c.start_page AS start_page, c.end_page AS end_page, d.filename AS filename, score
+        RETURN c.chunk_id AS chunk_id, c.text AS text, c.chunk_index AS chunk_index, c.start_page AS start_page, c.end_page AS end_page,c.headings AS headings, d.filename AS filename, score
         ORDER BY score DESC
         """
         async with self._sm.session() as s:
@@ -63,6 +63,7 @@ class VectorSearchStrategy(IRetrievalStrategy):
                 chunk_index=r.get("chunk_index", 0),
                 start_page=r.get("start_page", 0),
                 end_page=r.get("end_page", 0),
+                headings=r.get("headings", []),
                 source_filename=r.get("filename"),
             )
             for r in data

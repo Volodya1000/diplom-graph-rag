@@ -1,3 +1,4 @@
+import torch
 from sentence_transformers import SentenceTransformer
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 import numpy as np
@@ -7,7 +8,8 @@ import asyncio
 
 class SentenceTransformerService(IEmbeddingService):
     def __init__(self, model_name: str):
-        self.model = SentenceTransformer(model_name)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = SentenceTransformer(model_name, device=device)
 
     async def embed_text(self, text: str) -> List[float]:
         embedding = await asyncio.to_thread(self.model.encode, text)
