@@ -1,14 +1,18 @@
 from dishka import Provider, Scope, provide
+
+from src.application.services.file_storage_service import LocalFileStorageService
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
+from src.config.app_settings import AppSettings
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
+from src.domain.interfaces.services.file_storage_service import IFileStorageService
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.synonym_resolver import (
     ISynonymResolver,
-)  # <--- ДОБАВЛЕН ИМПОРТ
+)
 from src.domain.interfaces.llm.llm_client import ILLMClient
 from src.infrastructure.docling.doc_processor import DocProcessor
 from src.domain.resolution_rules import EntityResolutionMatcher
@@ -60,7 +64,7 @@ class ApplicationProvider(Provider):
         self,
         instance_repo: IInstanceRepository,
         doc_repo: IDocumentRepository,
-        synonym_resolver: ISynonymResolver,  # <--- ИСПРАВЛЕНО (добавлена аннотация типа)
+        synonym_resolver: ISynonymResolver,
         embedder: IEmbeddingService,
         rag_settings: RAGSettings,
     ) -> PostProcessingService:
@@ -104,3 +108,7 @@ class ApplicationProvider(Provider):
         self, schema_repo: ISchemaRepository
     ) -> UpdateOntologyUseCase:
         return UpdateOntologyUseCase(schema_repo)
+
+    @provide(scope=Scope.APP)
+    def provide_file_storage_service(self, config: AppSettings) -> IFileStorageService:
+        return LocalFileStorageService(config)

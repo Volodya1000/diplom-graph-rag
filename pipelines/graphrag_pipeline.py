@@ -96,21 +96,24 @@ class Pipeline:
             sources = data.get("sources", [])
             stats = data.get("context_stats", {})
 
-            # Форматируем красивый вывод с источниками (опционально, но очень полезно)
             extra_info = []
 
             if sources:
                 extra_info.append("\n\n---\n**📚 Источники:**")
 
-                # Группируем по файлу
                 from collections import defaultdict
 
-                file_to_pages = defaultdict(list)
+                # Теперь храним список страниц, url и максимальный score
+                file_info = defaultdict(
+                    lambda: {"pages": set(), "url": "", "score": 0.0}
+                )
 
                 for src in sources:
                     filename = src.get("filename") or "Неизвестный файл"
+                    url = src.get("download_url") or ""
                     start_page = src.get("start_page", 0)
                     end_page = src.get("end_page", 0)
+                    relevance = src.get("relevance", 0.0)
 
                     if start_page == 0:
                         pages_str = "Стр. неизвестна"
@@ -119,22 +122,29 @@ class Pipeline:
                     else:
                         pages_str = f"Стр. {start_page}-{end_page}"
 
-                    file_to_pages[filename].append(pages_str)
+                    file_info[filename]["pages"].add(pages_str)
 
-                for i, (filename, pages_list) in enumerate(file_to_pages.items(), 1):
-                    pages_unique = sorted(set(pages_list))  # убираем дубли страниц
-                    pages = ", ".join(pages_unique)
-                    # Можно взять максимальный score среди чанков этого файла
-                    max_relevance = max(
-                        (
-                            s.get("relevance", 0.0)
-                            for s in sources
-                            if s.get("filename") == filename
-                        ),
-                        default=0.0,
-                    )
+                    # Если URL есть, запоминаем его
+                    if url:
+                        file_info[filename]["url"] = url
+
+                    # Берем максимальный score
+                    if relevance > file_info[filename]["score"]:
+                        file_info[filename]["score"] = relevance
+
+                for i, (filename, info) in enumerate(file_info.items(), 1):
+                    pages = ", ".join(sorted(info["pages"]))
+                    score = info["score"]
+                    url = info["url"]
+
+                    # Делаем имя файла кликабельным, если есть URL
+                    if url:
+                        file_link = f"[{filename}]({url})"
+                    else:
+                        file_link = filename
+
                     extra_info.append(
-                        f"{i}. {filename} ({pages}) | *Score: {max_relevance:.2f}*"
+                        f"{i}. {file_link} ({pages}) | *Score: {score:.2f}*"
                     )
 
             if stats:

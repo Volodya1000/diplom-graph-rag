@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
+from starlette.staticfiles import StaticFiles
+
 from src.di.container import setup_di
 from src.presentation.api.routers import chat, documents
 from src.utils.logging import setup_logging
@@ -57,6 +59,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.include_router(chat.router)
 app.include_router(documents.router)

@@ -25,6 +25,8 @@ class AppSettings(BaseSettings):
     )
 
     embedding_model: str
+    api_base_url: str = "http://localhost:8000"
+
 
     neo4j: Neo4jSettings
     ollama: OllamaSettings
@@ -32,6 +34,7 @@ class AppSettings(BaseSettings):
     parsing: ParsingSettings
     extraction: ExtractionSettings
     rag: RAGSettings = RAGSettings()
+
 
 
 def load_config(yaml_path: str = "config.yml") -> AppSettings:

@@ -3,6 +3,9 @@ from src.domain.models.search import SearchMode
 from src.domain.models.qa import AnswerResponse, SourceReference
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
+from src.domain.interfaces.services.file_storage_service import (
+    IFileStorageService,
+)
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
 from src.application.services.context_builder import ContextBuilder
 
@@ -16,11 +19,13 @@ class AnswerQuestionUseCase:
         registry: RetrievalStrategyRegistry,
         context_builder: ContextBuilder,
         generator: IAnswerGenerator,
+        file_storage: IFileStorageService,
     ):
         self.embedder = embedder
         self.registry = registry
         self.context_builder = context_builder
         self.generator = generator
+        self.file_storage = file_storage
 
     async def execute(
         self, question: str, mode: SearchMode = SearchMode.HYBRID, top_k: int = 10
@@ -47,6 +52,10 @@ class AnswerQuestionUseCase:
                 relevance=c.score,
                 start_page=c.start_page,
                 end_page=c.end_page,
+                # Генерируем URL:
+                download_url=self.file_storage.get_download_url(c.source_filename)
+                if c.source_filename
+                else None,
             )
             for c in sorted(
                 retrieval_result.chunks, key=lambda c: c.score, reverse=True
