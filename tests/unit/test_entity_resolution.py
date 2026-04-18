@@ -8,6 +8,8 @@ from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.models.extraction import RawExtractedEntity
 from src.domain.models.nodes import InstanceNode
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def matcher() -> EntityResolutionMatcher:

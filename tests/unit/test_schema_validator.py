@@ -7,8 +7,11 @@ Unit: SchemaValidator — иерархия классов и валидация 
   - Подкласс Company наследует отношения Organization
   - Несуществующее отношение отклоняется
 """
+import pytest
 
 from src.domain.ontology.schema_validator import SchemaValidator
+
+pytestmark = pytest.mark.unit
 
 
 class TestSchemaValidatorHierarchy:

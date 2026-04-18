@@ -8,6 +8,8 @@ from src.domain.ontology.ontology_update_validator import (
 )
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def validator():

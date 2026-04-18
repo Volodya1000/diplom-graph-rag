@@ -1,8 +1,12 @@
 """Unit: GraphEdgeBuilder — построение рёбер документа и сущностей."""
 
+import pytest
+
 from src.domain.models.nodes import DocumentNode, ChunkNode, InstanceNode
 from src.domain.models.edges import GraphRelationType
 from src.domain.services.builders.edge_builder import GraphEdgeBuilder
+
+pytestmark = pytest.mark.unit
 
 
 class TestDocumentEdges:

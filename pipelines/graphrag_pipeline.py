@@ -32,7 +32,6 @@ class Pipeline:
         TOP_K: int = Field(default=10, description="Количество возвращаемых чанков")
 
     def __init__(self):
-        # 1. Лучшая практика - НЕ указывать self.id. Он будет взят из имени файла (graphrag_pipeline)
         self.name = "GraphRAG Search"
 
         # 2. Правильная инициализация Valves.

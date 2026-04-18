@@ -6,6 +6,8 @@ import pytest
 from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
 from src.domain.ontology.schema import SchemaStatus
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def sample_ttl() -> str:

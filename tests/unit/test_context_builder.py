@@ -3,6 +3,9 @@ from src.application.services.context_builder import ContextBuilder
 from src.domain.models.search import RetrievalResult, RetrievedChunk
 from src.config.rag_settings import RAGSettings
 
+pytestmark = pytest.mark.unit
+
+
 @pytest.fixture
 def builder() -> ContextBuilder:
     return ContextBuilder(settings=RAGSettings(max_context_chars=5000))

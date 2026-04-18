@@ -3,7 +3,12 @@ Unit: постфильтрация сущностей — структурные
 """
 
 from typing import Optional
+
+import pytest
+
 from src.config.extraction_settings import ExtractionSettings
+
+pytestmark = pytest.mark.unit
 
 
 def _make_client(settings: Optional[ExtractionSettings] = None):

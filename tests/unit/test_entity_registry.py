@@ -12,6 +12,8 @@ import pytest
 from src.application.services.entity_resolution_service import EntityRegistry
 from src.domain.models.nodes import InstanceNode
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def registry() -> EntityRegistry:

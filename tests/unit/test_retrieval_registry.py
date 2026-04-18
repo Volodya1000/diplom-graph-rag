@@ -11,6 +11,8 @@ from src.application.services.retrieval_registry import RetrievalStrategyRegistr
 from src.domain.models.search import SearchMode
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 
+pytestmark = pytest.mark.unit
+
 
 class _FakeStrategy(IRetrievalStrategy):
     def __init__(self, strategy_name: str):
