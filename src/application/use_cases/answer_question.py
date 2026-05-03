@@ -61,6 +61,7 @@ class AnswerQuestionUseCase:
                 end_page=c.end_page,
                 # Генерируем URL:
                 download_url=self.file_storage.get_download_url(c.source_filename) if c.source_filename else None,
+                text=c.text,
             )
             for c in sorted(
                 retrieval_result.chunks,

@@ -3,6 +3,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, cast
 
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI
@@ -53,7 +54,7 @@ app = FastAPI(
 )
 
 app.add_middleware(
-    CORSMiddleware,
+    cast(Any, CORSMiddleware),
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],

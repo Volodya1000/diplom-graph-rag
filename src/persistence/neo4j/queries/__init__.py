@@ -1,6 +1,5 @@
 # Analytics (GDS)
 from .analytics_queries import (
-    CleanupSmallCommunitiesQuery,
     DetectCommunitiesQuery,
     DropProjectionQuery,
     GetCommunitiesQuery,

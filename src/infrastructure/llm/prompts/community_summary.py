@@ -11,8 +11,5 @@ COMMUNITY_SUMMARY_SYSTEM = (
 )
 
 COMMUNITY_CONTEXT_TEMPLATE = (
-    "=== СУЩНОСТИ СООБЩЕСТВА #{community_id} ===\n"
-    "{members_text}\n\n"
-    "=== СВЯЗИ ===\n"
-    "{relations_text}"
+    "=== СУЩНОСТИ СООБЩЕСТВА #{community_id} ===\n{members_text}\n\n=== СВЯЗИ ===\n{relations_text}"
 )

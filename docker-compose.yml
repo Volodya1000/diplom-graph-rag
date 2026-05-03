@@ -39,7 +39,6 @@ services:
       - DEFAULT_USER_PASSWORD=12345
       - DEFAULT_USER_ROLE=admin
       - ENABLE_PIPELINES=true
-      - WEBUI_SECRET_KEY=t0p_s3cr3t_k3y_m1n1mum_32_ch4r4ct3rs_l0ng
       - OPENAI_API_BASE_URL=http://pipelines:9099
       - OPENAI_API_KEY=0p3n-w3bu!
     extra_hosts:

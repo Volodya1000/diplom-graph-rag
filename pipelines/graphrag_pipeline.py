@@ -10,16 +10,22 @@ requirements: requests
 """
 
 import os
+from typing import Any, TypedDict
 from collections import defaultdict
 from collections.abc import Generator, Iterator
 from logging import getLogger
-from typing import Any
 
 import requests
 from pydantic import BaseModel, Field
 
 logger = getLogger(__name__)
 logger.setLevel("DEBUG")
+
+
+class FileInfo(TypedDict):
+    pages: set[str]
+    url: str
+    score: float
 
 
 class Pipeline:
@@ -120,7 +126,7 @@ class Pipeline:
         if not sources:
             return ""
 
-        file_info = defaultdict(lambda: {"pages": set(), "url": "", "score": 0.0})
+        file_info: dict[str, FileInfo] = defaultdict(lambda: {"pages": set(), "url": "", "score": 0.0})
 
         for src in sources:
             filename = src.get("filename") or "Неизвестный файл"

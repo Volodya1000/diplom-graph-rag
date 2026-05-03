@@ -1,4 +1,5 @@
 import logging
+from typing import cast, Any
 
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
@@ -40,7 +41,7 @@ class OllamaSynonymResolver(ISynonymResolver):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((Exception,)),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(cast(Any, logger), logging.WARNING),
         reraise=True,
     )
     async def _invoke_chain(self, chain: Runnable, params: dict) -> _SynonymOutput:
