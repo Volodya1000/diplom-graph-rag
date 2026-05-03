@@ -1,8 +1,10 @@
 """CLI: Очистка базы данных."""
 
 import asyncio
+
 import typer
 from rich.console import Console
+
 from src.presentation.cli.app import app
 
 console = Console()
@@ -21,7 +23,7 @@ def drop_db_cmd(
         prompt="Вы уверены, что хотите удалить ВСЕ данные из Neo4j?",
     ),
 ):
-    """Полное удаление всех данных из Neo4j"""
+    """Полное удаление всех данных из Neo4j."""
     if not force:
         console.print("[yellow]Операция отменена.[/yellow]")
         return

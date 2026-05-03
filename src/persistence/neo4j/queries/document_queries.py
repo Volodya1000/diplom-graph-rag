@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Any
+
+from src.domain.models.nodes import ChunkNode, DocumentNode
+from src.persistence.neo4j.mappers.node_mappers import map_to_chunk, map_to_document
+
 from .base import Neo4jQuery
-from src.domain.models.nodes import DocumentNode, ChunkNode
-from src.persistence.neo4j.mappers.node_mappers import map_to_document, map_to_chunk
 
 
 @dataclass
 class SaveDocumentQuery(Neo4jQuery[Any]):
     doc_id: str
-    props: Dict[str, Any]
+    props: dict[str, Any]
 
     def get_query(self) -> str:
         return """
@@ -16,18 +18,18 @@ class SaveDocumentQuery(Neo4jQuery[Any]):
             SET d += $props
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"doc_id": self.doc_id, "props": self.props}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class SaveChunkQuery(Neo4jQuery[Any]):
     chunk_id: str
-    props: Dict[str, Any]
-    embedding: Optional[List[float]] = None
+    props: dict[str, Any]
+    embedding: list[float] | None = None
 
     def get_query(self) -> str:
         if self.embedding:
@@ -42,13 +44,13 @@ class SaveChunkQuery(Neo4jQuery[Any]):
             SET c += $props
         """
 
-    def get_params(self) -> Dict[str, Any]:
-        p: Dict[str, Any] = {"chunk_id": self.chunk_id, "props": self.props}
+    def get_params(self) -> dict[str, Any]:
+        p: dict[str, Any] = {"chunk_id": self.chunk_id, "props": self.props}
         if self.embedding:
             p["embedding"] = self.embedding
         return p
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -64,10 +66,10 @@ class GetDocumentByFilenameQuery(Neo4jQuery[DocumentNode]):
                    d.upload_date AS upload_date
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"filename": self.filename}
 
-    def map_record(self, record: Dict[str, Any]) -> DocumentNode:
+    def map_record(self, record: dict[str, Any]) -> DocumentNode:
         return map_to_document(record)
 
 
@@ -89,8 +91,8 @@ class GetChunksByDocumentQuery(Neo4jQuery[ChunkNode]):
             ORDER BY c.chunk_index
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"doc_id": self.doc_id}
 
-    def map_record(self, record: Dict[str, Any]) -> ChunkNode:
+    def map_record(self, record: dict[str, Any]) -> ChunkNode:
         return map_to_chunk(record)

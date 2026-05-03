@@ -1,40 +1,45 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
-from src.domain.ontology.schema import SchemaClass, SchemaStatus
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from src.application.services.entity_resolution_service import (
+    EntityResolutionOrchestrator,
+)
+from src.application.services.post_processing_service import PostProcessingService
+from src.application.use_cases.ingest_document import IngestDocumentUseCase
+from src.application.use_cases.ingest_pipeline.steps.embed_chunks_step import (
+    EmbedChunksStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.ensure_tbox_step import (
+    EnsureTBoxStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.extract_entities_step import (
+    ExtractEntitiesAndTriplesStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.parse_and_chunk_step import (
+    ParseAndChunkStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
+    PostProcessSynonymsStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.save_structure_step import (
+    SaveDocumentStructureStep,
+)
+from src.config.rag_settings import RAGSettings
 from src.domain.models.extraction import (
     ExtractionResult,
     RawExtractedEntity,
     RawExtractedTriple,
 )
-from src.application.use_cases.ingest_document import IngestDocumentUseCase
-from src.application.use_cases.ingest_pipeline.context import IIngestStep
-from src.application.services.entity_resolution_service import (
-    EntityResolutionOrchestrator,
-)
-from src.application.services.post_processing_service import PostProcessingService
-from src.domain.resolution_rules import EntityResolutionMatcher
 from src.domain.models.synonym import SynonymResolutionResult
-from src.infrastructure.docling.dtos import ProcessedChunk, ChunkMetadata
-from src.application.use_cases.ingest_pipeline.steps.ensure_tbox_step import (
-    EnsureTBoxStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.parse_and_chunk_step import (
-    ParseAndChunkStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.embed_chunks_step import (
-    EmbedChunksStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.save_structure_step import (
-    SaveDocumentStructureStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.extract_entities_step import (
-    ExtractEntitiesAndTriplesStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
-    PostProcessSynonymsStep,
-)
-from src.config.rag_settings import RAGSettings
+from src.domain.ontology.schema import SchemaClass, SchemaStatus
+from src.domain.resolution_rules import EntityResolutionMatcher
+from src.infrastructure.docling.dtos import ChunkMetadata, ProcessedChunk
+
+if TYPE_CHECKING:
+    from src.application.use_cases.ingest_pipeline.context import IIngestStep
 
 pytestmark = pytest.mark.integration
 
@@ -63,8 +68,10 @@ def mock_llm():
             ],
             triples=[
                 RawExtractedTriple(
-                    subject="Старик", predicate="CREATED", object="Колобок"
-                )
+                    subject="Старик",
+                    predicate="CREATED",
+                    object="Колобок",
+                ),
             ],
         ),
         ExtractionResult(
@@ -74,8 +81,10 @@ def mock_llm():
             ],
             triples=[
                 RawExtractedTriple(
-                    subject="Заяц", predicate="INTERACTS_WITH", object="Колобок"
-                )
+                    subject="Заяц",
+                    predicate="INTERACTS_WITH",
+                    object="Колобок",
+                ),
             ],
         ),
     ]
@@ -91,14 +100,20 @@ def mock_parser():
             index=1,
             enriched_text="Жили-были старик со старухой.",
             metadata=ChunkMetadata(
-                chunk_index=1, headings=[], start_page=1, end_page=1
+                chunk_index=1,
+                headings=[],
+                start_page=1,
+                end_page=1,
             ),
         ),
         ProcessedChunk(
             index=2,
             enriched_text="Катится колобок, а навстречу ему заяц.",
             metadata=ChunkMetadata(
-                chunk_index=2, headings=[], start_page=1, end_page=1
+                chunk_index=2,
+                headings=[],
+                start_page=1,
+                end_page=1,
             ),
         ),
     ]
@@ -120,7 +135,7 @@ async def seeded_schema(schema_repo):
             SchemaClass(name="Person", status=SchemaStatus.CORE),
             SchemaClass(name="Animal", status=SchemaStatus.CORE),
             SchemaClass(name="Product", status=SchemaStatus.CORE),
-        ]
+        ],
     )
     return schema_repo
 
@@ -141,11 +156,16 @@ class TestIngestHappyPath:
             instance_repo=instance_repo,
             embedder=mock_embedder,
             matcher=EntityResolutionMatcher(
-                levenshtein_threshold=0.85, strict_name_threshold=0.95
+                levenshtein_threshold=0.85,
+                strict_name_threshold=0.95,
             ),
         )
         post_processor = PostProcessingService(
-            instance_repo, doc_repo, mock_synonym_resolver, mock_embedder, RAGSettings()
+            instance_repo,
+            doc_repo,
+            mock_synonym_resolver,
+            mock_embedder,
+            RAGSettings(),
         )
 
         steps: list[IIngestStep] = [

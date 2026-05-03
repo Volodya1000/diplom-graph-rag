@@ -2,6 +2,7 @@
 
 import asyncio
 from pathlib import Path
+
 import typer
 from rich.console import Console
 
@@ -9,17 +10,19 @@ console = Console()
 
 
 def register():
-    """Пустышка для удобного импорта в app.py"""
-    pass
+    """Пустышка для удобного импорта в app.py."""
 
 
-from src.presentation.cli.app import app  # noqa: E402
+from src.presentation.cli.app import app
 
 
 @app.command("init-ontology")
 def init_ontology_cmd(
     ttl: Path = typer.Argument(
-        ..., help="Путь к файлу онтологии в формате .ttl", exists=True, readable=True
+        ...,
+        help="Путь к файлу онтологии в формате .ttl",
+        exists=True,
+        readable=True,
     ),
     force: bool = typer.Option(
         False,
@@ -37,8 +40,8 @@ def init_ontology_cmd(
 
 
 async def _run(ttl_path: Path, force: bool):
-    from src.di.container import setup_di
     from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
+    from src.di.container import setup_di
     from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 
     container = setup_di()
@@ -50,10 +53,10 @@ async def _run(ttl_path: Path, force: bool):
         if current_classes and not force:
             console.print("[yellow]⚠️ База данных уже содержит онтологию.[/yellow]")
             console.print(
-                "Для обновления существующей онтологии используйте команду: [bold cyan]import-ontology[/bold cyan]"
+                "Для обновления существующей онтологии используйте команду: [bold cyan]import-ontology[/bold cyan]",
             )
             console.print(
-                "Или используйте флаг [bold]--force[/bold], чтобы принудительно добавить новые данные."
+                "Или используйте флаг [bold]--force[/bold], чтобы принудительно добавить новые данные.",
             )
             return
 
@@ -68,7 +71,7 @@ async def _run(ttl_path: Path, force: bool):
         console.print(
             f"[bold green]✅ Онтология успешно инициализирована:[/bold green] "
             f"{result['updated_classes']} классов, "
-            f"{result['updated_relations']} отношений"
+            f"{result['updated_relations']} отношений",
         )
 
         if result.get("warnings"):
@@ -76,7 +79,7 @@ async def _run(ttl_path: Path, force: bool):
                 console.print(f"[yellow]⚠️ {w}[/yellow]")
 
     except ValueError as e:
-        console.print(f"[bold red]❌ Ошибка валидации TTL файла:[/bold red]\n{str(e)}")
+        console.print(f"[bold red]❌ Ошибка валидации TTL файла:[/bold red]\n{e!s}")
     except Exception as e:
         console.print(f"[bold red]✖ Системная ошибка:[/bold red] {e}")
     finally:

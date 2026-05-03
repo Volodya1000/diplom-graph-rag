@@ -1,8 +1,9 @@
+from enum import StrEnum
+
 from pydantic import BaseModel
-from enum import Enum
 
 
-class OcrEngineType(str, Enum):
+class OcrEngineType(StrEnum):
     TESSERACT = "tesseract"
     EASYOCR = "easyocr"
 

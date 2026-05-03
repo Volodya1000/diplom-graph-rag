@@ -5,8 +5,8 @@ Happy path + граничные случаи, которые нельзя про
 """
 
 import pytest
-from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
+from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
 pytestmark = pytest.mark.integration
 
@@ -40,7 +40,9 @@ class TestTBoxClasses:
         classes = [
             SchemaClass(name="Organization", status=SchemaStatus.CORE),
             SchemaClass(
-                name="Company", status=SchemaStatus.CORE, parent="Organization"
+                name="Company",
+                status=SchemaStatus.CORE,
+                parent="Organization",
             ),
         ]
 
@@ -60,12 +62,12 @@ class TestTBoxClasses:
         await schema_repo.save_tbox_classes(
             [
                 SchemaClass(name="Person", status=SchemaStatus.CORE, description="v1"),
-            ]
+            ],
         )
         await schema_repo.save_tbox_classes(
             [
                 SchemaClass(name="Person", status=SchemaStatus.CORE, description="v2"),
-            ]
+            ],
         )
 
         result = await schema_repo.get_tbox_classes()
@@ -79,7 +81,7 @@ class TestSchemaRelations:
             [
                 SchemaClass(name="Person", status=SchemaStatus.CORE),
                 SchemaClass(name="Organization", status=SchemaStatus.CORE),
-            ]
+            ],
         )
         relations = [
             SchemaRelation(
@@ -99,7 +101,8 @@ class TestSchemaRelations:
         assert result[0].target_class == "Organization"
 
     async def test_relation_without_matching_classes_is_silently_skipped(
-        self, schema_repo
+        self,
+        schema_repo,
     ):
         # Нет классов в БД — MATCH не найдёт ничего
         relations = [

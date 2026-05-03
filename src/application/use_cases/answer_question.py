@@ -1,13 +1,14 @@
 import logging
-from src.domain.models.search import SearchMode
-from src.domain.models.qa import AnswerResponse, SourceReference
-from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+
+from src.application.services.context_builder import ContextBuilder
+from src.application.services.retrieval_registry import RetrievalStrategyRegistry
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.domain.interfaces.services.file_storage_service import (
     IFileStorageService,
 )
-from src.application.services.retrieval_registry import RetrievalStrategyRegistry
-from src.application.services.context_builder import ContextBuilder
+from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.models.qa import AnswerResponse, SourceReference
+from src.domain.models.search import SearchMode
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +29,26 @@ class AnswerQuestionUseCase:
         self.file_storage = file_storage
 
     async def execute(
-        self, question: str, mode: SearchMode = SearchMode.HYBRID, top_k: int = 10
+        self,
+        question: str,
+        mode: SearchMode = SearchMode.HYBRID,
+        top_k: int = 10,
     ) -> AnswerResponse:
         logger.info(
-            f"❓ Question: «{question[:80]}…» | mode={mode.value} | top_k={top_k}"
+            f"❓ Question: «{question[:80]}…» | mode={mode.value} | top_k={top_k}",
         )
         query_embedding = await self.embedder.embed_text(question)
         strategy = self.registry.get(mode)
 
         retrieval_result = await strategy.retrieve(
-            query=question, query_embedding=query_embedding, top_k=top_k
+            query=question,
+            query_embedding=query_embedding,
+            top_k=top_k,
         )
         context_text = self.context_builder.build(retrieval_result)
         answer_text = await self.generator.generate(
-            question=question, context=context_text
+            question=question,
+            context=context_text,
         )
 
         sources = [
@@ -53,12 +60,12 @@ class AnswerQuestionUseCase:
                 start_page=c.start_page,
                 end_page=c.end_page,
                 # Генерируем URL:
-                download_url=self.file_storage.get_download_url(c.source_filename)
-                if c.source_filename
-                else None,
+                download_url=self.file_storage.get_download_url(c.source_filename) if c.source_filename else None,
             )
             for c in sorted(
-                retrieval_result.chunks, key=lambda c: c.score, reverse=True
+                retrieval_result.chunks,
+                key=lambda c: c.score,
+                reverse=True,
             )
         ]
 

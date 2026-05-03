@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import Set, List
 
 
 class ExtractionSettings(BaseModel):
@@ -8,7 +7,7 @@ class ExtractionSettings(BaseModel):
     min_entity_name_chars: int = 2
     max_triples_per_chunk: int = 15
 
-    no_vector_merge_types: Set[str] = Field(default_factory=lambda: {"date", "event"})
+    no_vector_merge_types: set[str] = Field(default_factory=lambda: {"date", "event"})
 
     strict_allowed_relations: bool = True
 
@@ -18,12 +17,12 @@ class ExtractionSettings(BaseModel):
     semantic_similarity_threshold: float = 0.88
 
     # Стоп-слова для мусорных сущностей
-    entity_stop_words: List[str] = Field(
+    entity_stop_words: list[str] = Field(
         default_factory=lambda: [
             "введение",
             "заключение",
             "глава",
             "рисунок",
             "таблица",
-        ]
+        ],
     )

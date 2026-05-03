@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List
+
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 
@@ -26,13 +26,13 @@ class TurtleOntologyExporter:
     )
 
     CLASSES_SECTION = "# ==================== КЛАССЫ ====================\n"
-    PROPERTIES_SECTION = (
-        "# ==================== ОБЪЕКТНЫЕ СВОЙСТВА ====================\n"
-    )
+    PROPERTIES_SECTION = "# ==================== ОБЪЕКТНЫЕ СВОЙСТВА ====================\n"
 
     @classmethod
     def to_turtle(
-        cls, classes: List[SchemaClass], relations: List[SchemaRelation]
+        cls,
+        classes: list[SchemaClass],
+        relations: list[SchemaRelation],
     ) -> str:
         """Основной публичный метод домена."""
         lines = [cls.HEADER, cls.CLASSES_SECTION]
@@ -64,10 +64,10 @@ class TurtleOntologyExporter:
         return "\n".join(lines)
 
     @staticmethod
-    def _group_properties(relations: List[SchemaRelation]) -> dict:
-        """Группирует по имени свойства: {name: {"domains": set, "ranges": set, "comment": str}}"""
+    def _group_properties(relations: list[SchemaRelation]) -> dict:
+        """Группирует по имени свойства: {name: {"domains": set, "ranges": set, "comment": str}}."""
         groups: defaultdict = defaultdict(
-            lambda: {"domains": set(), "ranges": set(), "comment": ""}
+            lambda: {"domains": set(), "ranges": set(), "comment": ""},
         )
         for r in relations:
             name = r.relation_name

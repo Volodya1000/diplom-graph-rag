@@ -14,7 +14,7 @@ def register():
     """Вызывается при импорте — команда уже добавлена декоратором."""
 
 
-from src.presentation.cli.app import app  # noqa: E402
+from src.presentation.cli.app import app
 
 
 @app.command("ingest")
@@ -26,14 +26,14 @@ def ingest_cmd(
         readable=True,
     ),
 ):
-    """Индексация PDF-документа в графовую БД"""
+    """Индексация PDF-документа в графовую БД."""
     console.print(f"[bold yellow]📄 Индексация:[/bold yellow] {file.name}")
     asyncio.run(_run(file))
 
 
 async def _run(file_path: Path):
-    from src.di.container import setup_di
     from src.application.use_cases.ingest_document import IngestDocumentUseCase
+    from src.di.container import setup_di
     from src.domain.interfaces.services.file_storage_service import IFileStorageService
 
     container = setup_di()
@@ -52,7 +52,7 @@ async def _run(file_path: Path):
         doc_id = await use_case.execute(saved_path)
 
         console.print(
-            f"[bold green]✔ Успех![/bold green] doc_id: [cyan]{doc_id}[/cyan]"
+            f"[bold green]✔ Успех![/bold green] doc_id: [cyan]{doc_id}[/cyan]",
         )
     except Exception as e:
         console.print(f"[bold red]✖ Ошибка:[/bold red] {e}")

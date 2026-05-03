@@ -1,15 +1,17 @@
 import logging
 import time
+
 from tqdm import tqdm
-from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
-from src.domain.services.builders.edge_builder import GraphEdgeBuilder
-from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
-from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
-from src.domain.interfaces.llm.llm_client import ILLMClient
+
 from src.application.services.entity_resolution_service import (
     EntityResolutionOrchestrator,
 )
+from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
+from src.domain.interfaces.llm.llm_client import ILLMClient
+from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
+from src.domain.services.builders.edge_builder import GraphEdgeBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +40,12 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
         total_chunks = len(ctx.domain_chunks)
 
         logger.info(
-            f"🔍 Запуск извлечения сущностей и триплетов из {total_chunks} чанков"
+            f"🔍 Запуск извлечения сущностей и триплетов из {total_chunks} чанков",
         )
 
         for idx, chunk in enumerate(
-            tqdm(ctx.domain_chunks, desc="📝 Извлечение сущностей", unit="chunk"), 1
+            tqdm(ctx.domain_chunks, desc="📝 Извлечение сущностей", unit="chunk"),
+            1,
         ):
             start_time = time.monotonic()
 
@@ -64,14 +67,12 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
                 f"✅ Чанк {idx:2d}/{total_chunks} | "
                 f"сущностей: {len(extraction.entities):2d} | "
                 f"триплетов: {len(extraction.triples):2d} | "
-                f"время: {duration:.1f}с"
+                f"время: {duration:.1f}с",
             )
 
             # Показываем конкретные сущности
             if extraction.entities:
-                entities_str = ", ".join(
-                    f"{e.name} [{e.type}]" for e in extraction.entities
-                )
+                entities_str = ", ".join(f"{e.name} [{e.type}]" for e in extraction.entities)
                 logger.info(f"   📌 Сущности: {entities_str}")
             else:
                 logger.info("   📌 Сущности: (нет)")
@@ -108,7 +109,7 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
                 logger.info(f"   ➕ Добавлено новых отношений: {len(new_relations)}")
                 for r in new_relations:
                     logger.info(
-                        f"      → {r.source_class} --{r.relation_name}→ {r.target_class}"
+                        f"      → {r.source_class} --{r.relation_name}→ {r.target_class}",
                     )
 
             # Сохранение экземпляров
@@ -129,7 +130,7 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
             ctx.total_triples += len(resolved_triples)
 
             logger.debug(
-                f"   Сохранено в этом чанке: {saved_this_chunk} новых сущностей"
+                f"   Сохранено в этом чанке: {saved_this_chunk} новых сущностей",
             )
 
         # ==================== ИТОГОВАЯ СВОДКА ====================
@@ -137,5 +138,5 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
             f"🎉 Извлечение сущностей завершено!\n"
             f"   Всего обработано чанков: {total_chunks}\n"
             f"   🧩 Сущностей сохранено: {ctx.total_entities}\n"
-            f"   🔗 Триплетов сохранено: {ctx.total_triples}"
+            f"   🔗 Триплетов сохранено: {ctx.total_triples}",
         )

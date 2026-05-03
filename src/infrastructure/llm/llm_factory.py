@@ -1,59 +1,53 @@
-"""
-Единственное место создания ChatOllama.
-"""
-
-import logging
-from typing import Optional
+# src/infrastructure/llm/llm_factory.py
 from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+
+from src.config.llm_settings import LLMSettings
 from src.config.ollama_settings import OllamaSettings
+from src.config.vllm_settings import VLLMSettings
 
-logger = logging.getLogger(__name__)
 
-
-class ChatOllamaFactory:
-    def __init__(self, settings: OllamaSettings):
+class ChatModelFactory:
+    def __init__(self, settings: LLMSettings):
         self._settings = settings
-        logger.info(
-            f"🔌 LLM Factory | model={settings.model_name} "
-            f"| cloud={settings.is_cloud} "
-            f"| url={settings.base_url}"
-        )
 
-    def create_json(
-        self,
-        temperature: Optional[float] = None,
-    ) -> BaseChatModel:
+    def create_json(self, temperature: float | None = None) -> BaseChatModel:
         return self._build(temperature=temperature, json_mode=True)
 
-    def create_text(
-        self,
-        temperature: Optional[float] = None,
-    ) -> BaseChatModel:
+    def create_text(self, temperature: float | None = None) -> BaseChatModel:
         return self._build(temperature=temperature, json_mode=False)
 
-    def _build(
-        self,
-        temperature: Optional[float],
-        json_mode: bool,
-    ) -> ChatOllama:
+    def _build(self, temperature: float | None, json_mode: bool) -> BaseChatModel:
         s = self._settings
         temp = temperature if temperature is not None else s.temperature
-        if json_mode:
+
+        if isinstance(s, OllamaSettings):
+            if json_mode:
+                return ChatOllama(
+                    model=s.model_name,
+                    base_url=s.get_base_url(),
+                    temperature=temp,
+                    num_ctx=s.max_tokens,
+                    client_kwargs={"headers": s.get_headers()},
+                    format="json",
+                )
             return ChatOllama(
                 model=s.model_name,
-                base_url=s.base_url,
+                base_url=s.get_base_url(),
                 temperature=temp,
-                num_ctx=s.num_ctx,
-                client_kwargs={"headers": s.headers},
-                format="json",
-                verbose=False,
+                num_ctx=s.max_tokens,
+                client_kwargs={"headers": s.get_headers()},
             )
-        return ChatOllama(
-            model=s.model_name,
-            base_url=s.base_url,
-            temperature=temp,
-            num_ctx=s.num_ctx,
-            client_kwargs={"headers": s.headers},
-            verbose=False,
-        )
+        if isinstance(s, VLLMSettings):
+            extra = {"model_kwargs": {"response_format": {"type": "json_object"}}} if json_mode else {}
+            return ChatOpenAI(
+                model=s.model_name,
+                base_url=s.get_base_url(),
+                api_key=s.api_key.get_secret_value() if s.api_key else "dummy",
+                temperature=temp,
+                max_tokens=s.max_tokens,
+                default_headers=s.get_headers(),
+                **extra,
+            )
+        raise TypeError(f"Unsupported LLM settings type: {type(s)}")

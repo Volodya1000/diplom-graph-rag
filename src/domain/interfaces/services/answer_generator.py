@@ -1,7 +1,6 @@
 """Генерация финального ответа по контексту."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class IAnswerGenerator(ABC):
@@ -10,7 +9,7 @@ class IAnswerGenerator(ABC):
         self,
         question: str,
         context: str,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ) -> str:
         """
         Генерирует ответ на вопрос по предоставленному контексту.
@@ -19,5 +18,6 @@ class IAnswerGenerator(ABC):
             question: вопрос пользователя
             context: собранный контекст (чанки + тройки + summaries)
             system_prompt: опциональный системный промпт
+
         """
         ...

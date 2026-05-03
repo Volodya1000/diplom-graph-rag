@@ -2,36 +2,34 @@ from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, provide
 
-from src.config.extraction_settings import ExtractionSettings
-from src.config.neo4j_settings import Neo4jSettings
-from src.config.ollama_settings import OllamaSettings
-from src.config.chunking_settings import ChunkingSettings
-from src.config.parsing_settings import ParsingSettings
+# ВСЕ импорты через src. - УБИРАЕМ config. без src
 from src.config.app_settings import AppSettings
-
-from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
-from src.domain.interfaces.repositories.document_repository import IDocumentRepository
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
-from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
-from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.config.chunking_settings import ChunkingSettings
+from src.config.extraction_settings import ExtractionSettings
+from src.config.llm_settings import LLMSettings  # ← через src.
+from src.config.neo4j_settings import Neo4jSettings
+from src.config.parsing_settings import ParsingSettings
 from src.domain.interfaces.llm.llm_client import ILLMClient
+from src.domain.interfaces.repositories.document_repository import IDocumentRepository
+from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
+from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
-
-from src.persistence.neo4j.session_manager import Neo4jSessionManager
-from src.persistence.neo4j.neo4j_schema_repository import Neo4jSchemaRepository
-from src.persistence.neo4j.neo4j_document_repository import Neo4jDocumentRepository
-from src.persistence.neo4j.neo4j_instance_repository import Neo4jInstanceRepository
-from src.persistence.neo4j.neo4j_edge_repository import Neo4jEdgeRepository
-
+from src.infrastructure.docling.doc_processor import DocProcessor
 from src.infrastructure.embeddings.sentence_transformer_embedding_service import (
     SentenceTransformerService,
 )
-from src.infrastructure.llm.llm_factory import ChatOllamaFactory
 from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
 from src.infrastructure.llm.clients.llm_synonym_resolver import (
     OllamaSynonymResolver,
 )
-from src.infrastructure.docling.doc_processor import DocProcessor
+from src.infrastructure.llm.llm_factory import ChatModelFactory
+from src.persistence.neo4j.neo4j_document_repository import Neo4jDocumentRepository
+from src.persistence.neo4j.neo4j_edge_repository import Neo4jEdgeRepository
+from src.persistence.neo4j.neo4j_instance_repository import Neo4jInstanceRepository
+from src.persistence.neo4j.neo4j_schema_repository import Neo4jSchemaRepository
+from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
 
 class InfrastructureProvider(Provider):
@@ -74,19 +72,16 @@ class InfrastructureProvider(Provider):
     ) -> IEdgeRepository:
         return Neo4jEdgeRepository(sm)
 
-    # --- LLM: одна фабрика → три клиента ---
-
+    # --- LLM: фабрика → клиенты ---
+    # ВАЖНО: Фабрика должна быть объявлена ПЕРВОЙ!
     @provide(scope=Scope.APP)
-    def provide_llm_factory(
-        self,
-        settings: OllamaSettings,
-    ) -> ChatOllamaFactory:
-        return ChatOllamaFactory(settings)
+    def provide_llm_factory(self, settings: LLMSettings) -> ChatModelFactory:
+        return ChatModelFactory(settings)
 
     @provide(scope=Scope.APP)
     def provide_llm(
         self,
-        factory: ChatOllamaFactory,
+        factory: ChatModelFactory,
         extraction_settings: ExtractionSettings,
     ) -> ILLMClient:
         return OllamaClient(factory, extraction_settings)
@@ -94,7 +89,7 @@ class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_synonym_resolver(
         self,
-        factory: ChatOllamaFactory,
+        factory: ChatModelFactory,
     ) -> ISynonymResolver:
         return OllamaSynonymResolver(factory)
 
@@ -109,5 +104,3 @@ class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_parser(self) -> DocProcessor:
         return DocProcessor(ChunkingSettings(), ParsingSettings())
-
-

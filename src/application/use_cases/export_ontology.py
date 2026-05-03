@@ -2,8 +2,9 @@
 Use Case: Экспорт онтологии.
 Теперь — только оркестратор. Вся логика в домене.
 """
-from pathlib import Path
+
 import logging
+from pathlib import Path
 
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.ontology.turtle_ontology_exporter import TurtleOntologyExporter
@@ -26,6 +27,5 @@ class ExportOntologyUseCase:
         turtle = TurtleOntologyExporter.to_turtle(classes, relations)
 
         output_path.write_text(turtle, encoding="utf-8")
-        logger.info(f"✅ Онтология экспортирована: {output_path} "
-                    f"({len(classes)} классов, {len(relations)} отношений)")
+        logger.info(f"✅ Онтология экспортирована: {output_path} ({len(classes)} классов, {len(relations)} отношений)")
         return str(output_path)

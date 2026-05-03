@@ -1,8 +1,4 @@
-"""
-Unit: постфильтрация сущностей — структурные правила.
-"""
-
-from typing import Optional
+"""Unit: постфильтрация сущностей — структурные правила."""
 
 import pytest
 
@@ -11,8 +7,9 @@ from src.config.extraction_settings import ExtractionSettings
 pytestmark = pytest.mark.unit
 
 
-def _make_client(settings: Optional[ExtractionSettings] = None):
+def _make_client(settings: ExtractionSettings | None = None):
     from unittest.mock import MagicMock
+
     from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
 
     factory = MagicMock()

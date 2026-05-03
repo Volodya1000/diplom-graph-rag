@@ -7,9 +7,10 @@ Unit: RetrievalStrategyRegistry — выбор стратегии по SearchMod
 """
 
 import pytest
+
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
-from src.domain.models.search import SearchMode
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
+from src.domain.models.search import SearchMode
 
 pytestmark = pytest.mark.unit
 

@@ -1,55 +1,59 @@
+from typing import TYPE_CHECKING
+
 from dishka import Provider, Scope, provide
 
+from src.application.services.entity_resolution_service import (
+    EntityResolutionOrchestrator,
+)
 from src.application.services.file_storage_service import LocalFileStorageService
+from src.application.services.post_processing_service import PostProcessingService
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
+from src.application.use_cases.ingest_document import IngestDocumentUseCase
+from src.application.use_cases.ingest_pipeline.steps.embed_chunks_step import (
+    EmbedChunksStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.ensure_tbox_step import (
+    EnsureTBoxStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.extract_entities_step import (
+    ExtractEntitiesAndTriplesStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.parse_and_chunk_step import (
+    ParseAndChunkStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
+    PostProcessSynonymsStep,
+)
+from src.application.use_cases.ingest_pipeline.steps.save_structure_step import (
+    SaveDocumentStructureStep,
+)
+from src.application.use_cases.seed_tbox import SeedTboxUseCase
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.config.app_settings import AppSettings
-from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
+from src.config.extraction_settings import ExtractionSettings
+from src.config.rag_settings import RAGSettings
+from src.domain.interfaces.llm.llm_client import ILLMClient
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 from src.domain.interfaces.services.file_storage_service import IFileStorageService
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.interfaces.services.synonym_resolver import (
     ISynonymResolver,
 )
-from src.domain.interfaces.llm.llm_client import ILLMClient
-from src.infrastructure.docling.doc_processor import DocProcessor
 from src.domain.resolution_rules import EntityResolutionMatcher
-from src.application.services.entity_resolution_service import (
-    EntityResolutionOrchestrator,
-)
-from src.application.services.post_processing_service import PostProcessingService
-from src.application.use_cases.seed_tbox import SeedTboxUseCase
-from src.application.use_cases.ingest_pipeline.context import IIngestStep
-from src.application.use_cases.ingest_pipeline.steps.ensure_tbox_step import (
-    EnsureTBoxStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.parse_and_chunk_step import (
-    ParseAndChunkStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.embed_chunks_step import (
-    EmbedChunksStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.save_structure_step import (
-    SaveDocumentStructureStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.extract_entities_step import (
-    ExtractEntitiesAndTriplesStep,
-)
-from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
-    PostProcessSynonymsStep,
-)
-from src.application.use_cases.ingest_document import IngestDocumentUseCase
+from src.infrastructure.docling.doc_processor import DocProcessor
 
-from src.config.extraction_settings import ExtractionSettings
-from src.config.rag_settings import RAGSettings
+if TYPE_CHECKING:
+    from src.application.use_cases.ingest_pipeline.context import IIngestStep
 
 
 class ApplicationProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_matcher(
-        self, ext_settings: ExtractionSettings
+        self,
+        ext_settings: ExtractionSettings,
     ) -> EntityResolutionMatcher:
         return EntityResolutionMatcher(
             levenshtein_threshold=ext_settings.levenshtein_threshold,
@@ -69,7 +73,11 @@ class ApplicationProvider(Provider):
         rag_settings: RAGSettings,
     ) -> PostProcessingService:
         return PostProcessingService(
-            instance_repo, doc_repo, synonym_resolver, embedder, rag_settings
+            instance_repo,
+            doc_repo,
+            synonym_resolver,
+            embedder,
+            rag_settings,
         )
 
     @provide(scope=Scope.APP)
@@ -91,7 +99,11 @@ class ApplicationProvider(Provider):
             EmbedChunksStep(embedder),
             SaveDocumentStructureStep(doc_repo, edge_repo),
             ExtractEntitiesAndTriplesStep(
-                llm, schema_repo, instance_repo, edge_repo, er_svc
+                llm,
+                schema_repo,
+                instance_repo,
+                edge_repo,
+                er_svc,
             ),
             PostProcessSynonymsStep(post_processor),
         ]
@@ -99,13 +111,15 @@ class ApplicationProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_export_ontology_use_case(
-        self, schema_repo: ISchemaRepository
+        self,
+        schema_repo: ISchemaRepository,
     ) -> ExportOntologyUseCase:
         return ExportOntologyUseCase(schema_repo)
 
     @provide(scope=Scope.APP)
     def provide_update_ontology_use_case(
-        self, schema_repo: ISchemaRepository
+        self,
+        schema_repo: ISchemaRepository,
     ) -> UpdateOntologyUseCase:
         return UpdateOntologyUseCase(schema_repo)
 

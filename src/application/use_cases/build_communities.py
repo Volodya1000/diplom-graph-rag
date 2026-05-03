@@ -9,13 +9,13 @@ Use Case: Community Detection + генерация summaries.
 
 import logging
 
+from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
-from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.infrastructure.llm.prompts.community_summary import (
-    COMMUNITY_SUMMARY_SYSTEM,
     COMMUNITY_CONTEXT_TEMPLATE,
+    COMMUNITY_SUMMARY_SYSTEM,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,7 @@ class BuildCommunitiesUseCase:
         force: bool = False,
     ) -> dict:
         logger.info(
-            f"🧩 Build communities: "
-            f"algorithm={algorithm}, force={force}, min_size={min_community_size}"
+            f"🧩 Build communities: algorithm={algorithm}, force={force}, min_size={min_community_size}",
         )
 
         # 1. Проекция
@@ -57,7 +56,7 @@ class BuildCommunitiesUseCase:
         communities = await self._analytics.get_communities()
         valid_count = len(communities)
         logger.info(
-            f"🧩 Итоговых валидных сообществ: {valid_count} (было до очистки: {raw_count})"
+            f"🧩 Итоговых валидных сообществ: {valid_count} (было до очистки: {raw_count})",
         )
 
         if not generate_summaries:
@@ -93,7 +92,7 @@ class BuildCommunitiesUseCase:
             logger.info(
                 f"📝 [{i}/{len(eligible)}] Community #{comm.community_id} "
                 f"({comm.entity_count} entities): "
-                f"{summary[:60]}…"
+                f"{summary[:60]}…",
             )
 
         result = {
@@ -110,17 +109,14 @@ class BuildCommunitiesUseCase:
     ) -> str:
         members_text = "\n".join(f"• {m['name']} [{m['class_name']}]" for m in members)
 
-        relations_lines = []
-        for m in members:
-            for rel in m.get("relations", []):
-                if rel.get("target"):
-                    relations_lines.append(
-                        f"  {m['name']} —{rel['predicate']}→ {rel['target']}"
-                    )
+        relations_lines = [
+            f"  {m['name']} —{rel['predicate']}→ {rel['target']}"
+            for m in members
+            for rel in m.get("relations", [])
+            if rel.get("target")
+        ]
 
-        relations_text = (
-            "\n".join(relations_lines) if relations_lines else "(нет связей)"
-        )
+        relations_text = "\n".join(relations_lines) if relations_lines else "(нет связей)"
 
         return COMMUNITY_CONTEXT_TEMPLATE.format(
             community_id=community_id,

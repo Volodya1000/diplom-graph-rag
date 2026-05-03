@@ -1,20 +1,22 @@
 from dataclasses import dataclass
-from typing import Dict, Any, List
-from .base import Neo4jQuery
+from typing import Any
+
 from src.domain.models.community import GraphCommunity
+
+from .base import Neo4jQuery
 
 
 @dataclass
-class GraphExistsQuery(Neo4jQuery[Dict[str, Any]]):
+class GraphExistsQuery(Neo4jQuery[dict[str, Any]]):
     name: str
 
     def get_query(self) -> str:
         return "CALL gds.graph.exists($name) YIELD exists"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"name": self.name}
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return record
 
 
@@ -27,10 +29,10 @@ class GraphProjectQuery(Neo4jQuery[Any]):
             CALL gds.graph.project($name, 'Instance', {ALL_RELS: {type: '*', orientation: 'UNDIRECTED'}}, {nodeProperties: ['embedding']})
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"name": self.name}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -41,15 +43,15 @@ class DropProjectionQuery(Neo4jQuery[Any]):
     def get_query(self) -> str:
         return "CALL gds.graph.drop($name)"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"name": self.name}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
-class DetectCommunitiesQuery(Neo4jQuery[Dict[str, Any]]):
+class DetectCommunitiesQuery(Neo4jQuery[dict[str, Any]]):
     projection: str
     prop: str
     algo_call: str
@@ -57,10 +59,10 @@ class DetectCommunitiesQuery(Neo4jQuery[Dict[str, Any]]):
     def get_query(self) -> str:
         return f"CALL {self.algo_call}($projection, {{writeProperty: $prop}}) YIELD communityCount, modularity RETURN communityCount, modularity"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"projection": self.projection, "prop": self.prop}
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return record
 
 
@@ -76,10 +78,10 @@ class GetCommunitiesQuery(Neo4jQuery[GraphCommunity]):
             ORDER BY entity_count DESC
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> GraphCommunity:
+    def map_record(self, record: dict[str, Any]) -> GraphCommunity:
         return GraphCommunity(
             community_id=record["community_id"],
             entity_count=record["entity_count"],
@@ -89,7 +91,7 @@ class GetCommunitiesQuery(Neo4jQuery[GraphCommunity]):
 
 
 @dataclass
-class GetCommunityMembersQuery(Neo4jQuery[Dict[str, Any]]):
+class GetCommunityMembersQuery(Neo4jQuery[dict[str, Any]]):
     community_id: int
 
     def get_query(self) -> str:
@@ -100,10 +102,10 @@ class GetCommunityMembersQuery(Neo4jQuery[Dict[str, Any]]):
             RETURN i.instance_id AS instance_id, i.name AS name, i.class_name AS class_name, relations
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"cid": self.community_id}
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return record
 
 
@@ -111,25 +113,25 @@ class GetCommunityMembersQuery(Neo4jQuery[Dict[str, Any]]):
 class SaveCommunitySummaryQuery(Neo4jQuery[Any]):
     community_id: int
     summary: str
-    key_entities: List[str]
+    key_entities: list[str]
 
     def get_query(self) -> str:
         return "MERGE (cs:CommunitySummary {community_id: $cid}) SET cs.summary = $summary, cs.key_entities = $entities, cs.updated_at = datetime()"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "cid": self.community_id,
             "summary": self.summary,
             "entities": self.key_entities[:20],
         }
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
-class PersonalizedPageRankQuery(Neo4jQuery[Dict[str, Any]]):
-    seed_ids: List[str]
+class PersonalizedPageRankQuery(Neo4jQuery[dict[str, Any]]):
+    seed_ids: list[str]
     projection: str
     damping: float
     top_k: int
@@ -147,7 +149,7 @@ class PersonalizedPageRankQuery(Neo4jQuery[Dict[str, Any]]):
             ORDER BY score DESC LIMIT $top_k
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "seed_ids": self.seed_ids,
             "projection": self.projection,
@@ -155,7 +157,7 @@ class PersonalizedPageRankQuery(Neo4jQuery[Dict[str, Any]]):
             "top_k": self.top_k,
         }
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return record
 
 
@@ -174,8 +176,8 @@ class CleanupSmallCommunitiesQuery(Neo4jQuery[int]):
             RETURN count(n) AS removed_count
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"min_size": self.min_size}
 
-    def map_record(self, record: Dict[str, Any]) -> int:
+    def map_record(self, record: dict[str, Any]) -> int:
         return record.get("removed_count", 0)

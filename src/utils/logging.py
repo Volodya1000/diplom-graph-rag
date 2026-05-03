@@ -1,18 +1,17 @@
-"""Утилиты для управления логированием в проекте"""
+"""Утилиты для управления логированием в проекте."""
 
 import logging
 import warnings
-from typing import Optional
 
 
-def setup_logging(level: Optional[int] = None, disable_verbose: bool = True):
+def setup_logging(level: int | None = None, disable_verbose: bool = True):
     if level is None:
         level = logging.INFO
 
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S",
     )
 
     if disable_verbose:
@@ -28,7 +27,6 @@ def disable_noisy_loggers():
         "docling.models.layout_model",
         "docling.pipeline",
         "docling.models.table_structure_model",
-
         # Transformers
         "transformers",
         "transformers.modeling_utils",
@@ -36,25 +34,20 @@ def disable_noisy_loggers():
         "transformers.utils.logging",
         "sentence_transformers.SentenceTransformer",
         "tokenizers",
-
         # HuggingFace
         "huggingface_hub.file_download",
         "huggingface_hub.repository",
         "huggingface_hub.hf_api",
-
         # HTTP
         "httpx",
         "httpcore",
-
         # OCR
         "easyocr.easyocr",
-
         # Neo4j — подавляем warnings о несуществующих свойствах
         "neo4j",
         "neo4j.notifications",
         "neo4j.io",
         "neo4j.pool",
-
         # Прочие
         "torch",
         "PIL",
@@ -68,6 +61,7 @@ def disable_noisy_loggers():
         logger.propagate = False
 
     from transformers.utils import logging as transformers_logging
+
     transformers_logging.set_verbosity_error()
 
     warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
@@ -79,15 +73,15 @@ def disable_noisy_loggers():
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="neo4j")
 
 
-def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
+def get_logger(name: str, level: int | None = None) -> logging.Logger:
     logger = logging.getLogger(name)
     if level is not None:
         logger.setLevel(level)
     if not logger.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%H:%M:%S'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%H:%M:%S",
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)

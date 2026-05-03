@@ -1,12 +1,17 @@
 import pytest
-from src.domain.models.nodes import InstanceNode, ChunkNode, DocumentNode
+
+from src.domain.models.nodes import ChunkNode, DocumentNode, InstanceNode
 
 pytestmark = pytest.mark.integration
 
 
 class TestInstanceCRUD:
     async def test_save_and_retrieve_instance_by_chunk(
-        self, instance_repo, doc_repo, edge_repo, schema_repo
+        self,
+        instance_repo,
+        doc_repo,
+        edge_repo,
+        schema_repo,
     ):
         await schema_repo.ensure_indexes()
         doc = DocumentNode(doc_id="d1", filename="t.pdf")

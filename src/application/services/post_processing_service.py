@@ -1,11 +1,12 @@
 import logging
-from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+
+from src.config.rag_settings import RAGSettings
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
 from src.domain.models.nodes import InstanceNode
 from src.domain.models.synonym import SynonymResolutionResult
-from src.config.rag_settings import RAGSettings
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,9 @@ class PostProcessingService:
         self._settings = settings
 
     async def resolve_synonyms(
-        self, doc_id: str, document_context: str = ""
+        self,
+        doc_id: str,
+        document_context: str = "",
     ) -> SynonymResolutionResult:
         instances = await self._instance_repo.get_instances_by_document(doc_id)
         if len(instances) < 2:

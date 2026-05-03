@@ -1,10 +1,10 @@
 import logging
-from typing import List
-from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
+
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 from src.domain.models.search import RetrievalResult, RetrievedChunk, RetrievedTriple
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
@@ -31,10 +31,14 @@ class PPRStrategy(IRetrievalStrategy):
         return "personalized_pagerank"
 
     async def retrieve(
-        self, query: str, query_embedding: List[float], top_k: int = 10
+        self,
+        query: str,
+        query_embedding: list[float],
+        top_k: int = 10,
     ) -> RetrievalResult:
         seeds = await self._instance_repo.find_candidates_by_vector(
-            query_embedding, limit=top_k
+            query_embedding,
+            limit=top_k,
         )
         if not seeds:
             return RetrievalResult(metadata={"strategy": self.name, "seeds": 0})
@@ -42,13 +46,15 @@ class PPRStrategy(IRetrievalStrategy):
         seed_ids = [c.instance_id for c in seeds]
         await self._analytics.ensure_projection()
         ppr_results = await self._analytics.personalized_pagerank(
-            seed_ids, self._ppr_top_k, self._damping
+            seed_ids,
+            self._ppr_top_k,
+            self._damping,
         )
 
         chunk_ids = {r["chunk_id"] for r in ppr_results if r.get("chunk_id")}
         chunks = await self._load_chunks(list(chunk_ids))
         triples = await self._load_triples_between(
-            {r["instance_id"] for r in ppr_results}
+            {r["instance_id"] for r in ppr_results},
         )
 
         return RetrievalResult(
@@ -61,7 +67,7 @@ class PPRStrategy(IRetrievalStrategy):
             },
         )
 
-    async def _load_chunks(self, chunk_ids: List[str]) -> List[RetrievedChunk]:
+    async def _load_chunks(self, chunk_ids: list[str]) -> list[RetrievedChunk]:
         if not chunk_ids:
             return []
         query = """
@@ -84,7 +90,7 @@ class PPRStrategy(IRetrievalStrategy):
             for r in data
         ]
 
-    async def _load_triples_between(self, instance_ids: set) -> List[RetrievedTriple]:
+    async def _load_triples_between(self, instance_ids: set) -> list[RetrievedTriple]:
         if len(instance_ids) < 2:
             return []
         query = """

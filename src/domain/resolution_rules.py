@@ -1,8 +1,4 @@
-"""
-Entity Resolution с защитой дат от ложного мержа.
-"""
-
-from typing import List, Optional
+"""Entity Resolution с защитой дат от ложного мержа."""
 
 import Levenshtein
 
@@ -35,8 +31,8 @@ class EntityResolutionMatcher:
     def find_best_match(
         self,
         target: RawExtractedEntity,
-        candidates: List[InstanceNode],
-    ) -> Optional[str]:
+        candidates: list[InstanceNode],
+    ) -> str | None:
         target_name = target.name.strip().lower()
         target_type = target.type.strip().lower()
 
@@ -48,7 +44,7 @@ class EntityResolutionMatcher:
                     return cand.instance_id
             return None
 
-        best_id: Optional[str] = None
+        best_id: str | None = None
         best_score: float = 0.0
 
         for cand in candidates:
@@ -69,9 +65,8 @@ class EntityResolutionMatcher:
                 continue
 
             # Правило 3: Высокий Левенштейн + совпадение типа
-            if sim >= self.levenshtein_threshold and target_type == cand_type:
-                if sim > best_score:
-                    best_score = sim
-                    best_id = cand.instance_id
+            if sim >= self.levenshtein_threshold and target_type == cand_type and sim > best_score:
+                best_score = sim
+                best_id = cand.instance_id
 
         return best_id

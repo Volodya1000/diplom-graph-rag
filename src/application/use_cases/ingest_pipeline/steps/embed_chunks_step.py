@@ -1,5 +1,6 @@
 import logging
 import time
+
 from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 
@@ -22,5 +23,5 @@ class EmbedChunksStep(IIngestStep):
             chunk.embedding = embeddings[i]
 
         logger.info(
-            f"🧠 Embeddings: {len(embeddings)} ({time.monotonic() - t_embed:.1f}s)"
+            f"🧠 Embeddings: {len(embeddings)} ({time.monotonic() - t_embed:.1f}s)",
         )

@@ -1,8 +1,9 @@
 import logging
+
 from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
-from src.domain.services.builders.edge_builder import GraphEdgeBuilder
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
+from src.domain.services.builders.edge_builder import GraphEdgeBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,8 @@ class SaveDocumentStructureStep(IIngestStep):
             await self.doc_repo.save_chunk(chunk)
 
         edges = GraphEdgeBuilder.build_document_edges(
-            document=ctx.document, chunks=ctx.domain_chunks
+            document=ctx.document,
+            chunks=ctx.domain_chunks,
         )
         await self.edge_repo.save_edges(edges)
 

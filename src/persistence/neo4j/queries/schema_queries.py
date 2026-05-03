@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from typing import Dict, Any, List
-from .base import Neo4jQuery
+from typing import Any
+
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.persistence.neo4j.mappers.node_mappers import (
     map_to_schema_class,
     map_to_schema_relation,
 )
+
+from .base import Neo4jQuery
 
 
 @dataclass
@@ -22,10 +24,10 @@ class CreateInstanceEmbeddingIndexQuery(Neo4jQuery[Any]):
             }}}}
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -43,24 +45,22 @@ class CreateChunkEmbeddingIndexQuery(Neo4jQuery[Any]):
             }}}}
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class CreateInstanceNameIndexQuery(Neo4jQuery[Any]):
     def get_query(self) -> str:
-        return (
-            "CREATE INDEX instance_name_idx IF NOT EXISTS FOR (i:Instance) ON (i.name)"
-        )
+        return "CREATE INDEX instance_name_idx IF NOT EXISTS FOR (i:Instance) ON (i.name)"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -69,10 +69,10 @@ class CreateSchemaClassNameIndexQuery(Neo4jQuery[Any]):
     def get_query(self) -> str:
         return "CREATE INDEX schema_class_name_idx IF NOT EXISTS FOR (c:SchemaClass) ON (c.name)"
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -85,16 +85,16 @@ class GetTboxClassesQuery(Neo4jQuery[SchemaClass]):
                    c.description AS description, c.parent AS parent
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> SchemaClass:
+    def map_record(self, record: dict[str, Any]) -> SchemaClass:
         return map_to_schema_class(record)
 
 
 @dataclass
 class SaveTboxClassesQuery(Neo4jQuery[Any]):
-    batch: List[Dict[str, Any]]
+    batch: list[dict[str, Any]]
 
     def get_query(self) -> str:
         return """
@@ -104,16 +104,16 @@ class SaveTboxClassesQuery(Neo4jQuery[Any]):
             ON MATCH SET c.description = row.description, c.parent = row.parent
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"batch": self.batch}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class CreateSubclassOfEdgesQuery(Neo4jQuery[Any]):
-    batch: List[Dict[str, Any]]
+    batch: list[dict[str, Any]]
 
     def get_query(self) -> str:
         return """
@@ -124,10 +124,10 @@ class CreateSubclassOfEdgesQuery(Neo4jQuery[Any]):
             MERGE (child)-[:SUBCLASS_OF]->(parent)
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"batch": self.batch}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -140,16 +140,16 @@ class GetSchemaRelationsQuery(Neo4jQuery[SchemaRelation]):
                    tgt.name AS target_class, r.status AS status, r.description AS description
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> SchemaRelation:
+    def map_record(self, record: dict[str, Any]) -> SchemaRelation:
         return map_to_schema_relation(record)
 
 
 @dataclass
 class SaveSchemaRelationsQuery(Neo4jQuery[Any]):
-    batch: List[Dict[str, Any]]
+    batch: list[dict[str, Any]]
 
     def get_query(self) -> str:
         return """
@@ -161,15 +161,15 @@ class SaveSchemaRelationsQuery(Neo4jQuery[Any]):
             ON MATCH SET r.description = row.description
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"batch": self.batch}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
-class GetClassUsageCountsQuery(Neo4jQuery[Dict[str, Any]]):
+class GetClassUsageCountsQuery(Neo4jQuery[dict[str, Any]]):
     def get_query(self) -> str:
         return """
             MATCH (sc:SchemaClass)
@@ -177,8 +177,8 @@ class GetClassUsageCountsQuery(Neo4jQuery[Dict[str, Any]]):
             RETURN sc.name AS name, COUNT(i) AS usage
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return {"name": record["name"], "usage": record["usage"]}

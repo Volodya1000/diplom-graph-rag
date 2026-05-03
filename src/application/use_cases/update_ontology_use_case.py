@@ -1,11 +1,11 @@
-"""
-Use Case: Обновление онтологии из TTL-файла (Protégé → Neo4j).
-"""
-from pathlib import Path
+"""Use Case: Обновление онтологии из TTL-файла (Protégé → Neo4j)."""
+
 import logging
+from pathlib import Path
+
 from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
-from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
 from src.domain.ontology.ontology_update_validator import OntologyUpdateValidator
+from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,10 @@ class UpdateOntologyUseCase:
 
         validator = OntologyUpdateValidator()
         result = validator.validate_merge(
-            current_classes, current_relations,
-            proposed_classes, proposed_relations,
+            current_classes,
+            current_relations,
+            proposed_classes,
+            proposed_relations,
             usage,
         )
 
@@ -41,9 +43,7 @@ class UpdateOntologyUseCase:
         await self.schema_repo.save_schema_relations(result.merged_relations)
 
         logger.info(
-            f"✅ Онтология обновлена: "
-            f"{len(result.merged_classes)} классов, "
-            f"{len(result.merged_relations)} отношений"
+            f"✅ Онтология обновлена: {len(result.merged_classes)} классов, {len(result.merged_relations)} отношений",
         )
         if result.warnings:
             for w in result.warnings:

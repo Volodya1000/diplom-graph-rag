@@ -1,16 +1,15 @@
 import logging
 import re
-from typing import List
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import BaseModel, Field
 from tenacity import (
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
 )
 
 from src.config.extraction_settings import ExtractionSettings
@@ -22,7 +21,7 @@ from src.domain.models.extraction import (
 )
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
-from src.infrastructure.llm.llm_factory import ChatOllamaFactory
+from src.infrastructure.llm.llm_factory import ChatModelFactory
 from src.infrastructure.llm.output_cleaners import clean_json_output
 from src.infrastructure.llm.prompts.entity_extraction import (
     get_entity_extraction_prompt,
@@ -44,18 +43,16 @@ class _ParsedTriple(BaseModel):
 
 
 class _ExtractionOutput(BaseModel):
-    entities: List[_ParsedEntity] = Field(default_factory=list)
-    triples: List[_ParsedTriple] = Field(default_factory=list)
+    entities: list[_ParsedEntity] = Field(default_factory=list)
+    triples: list[_ParsedTriple] = Field(default_factory=list)
 
 
 # ==================== КЛИЕНТ ====================
 class OllamaClient(ILLMClient):
-    # Регулярка для отлова галлюцинаций типа "НеразмеченныеКорпусаТекста"
     _CAMEL_CASE_RE = re.compile(r"^[А-Я][а-я]+[А-Я][а-яA-ZА-Я0-9]+$")
 
-    def __init__(
-        self, factory: ChatOllamaFactory, extraction_settings: ExtractionSettings
-    ):
+    def __init__(self, factory: ChatModelFactory, extraction_settings: ExtractionSettings):
+        # Используем JSON-режим для извлечения структур
         self._llm = factory.create_json(temperature=0.1)
         self._settings = extraction_settings
 
@@ -72,57 +69,20 @@ class OllamaClient(ILLMClient):
     async def extract_entities_and_triples(
         self,
         text: str,
-        tbox_classes: List[SchemaClass],
-        tbox_relations: List[SchemaRelation],
+        tbox_classes: list[SchemaClass],
+        tbox_relations: list[SchemaRelation],
         known_entities: str = "",
     ) -> ExtractionResult:
-        validator = SchemaValidator(tbox_classes, tbox_relations)
-        parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
-        prompt = get_entity_extraction_prompt().partial(
-            format_instructions=parser.get_format_instructions()  # <- ЭТА СТРОКА ВАЖНА!
-        )
-        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
-
+        """Точка входа. Оркестратор: получает данные, валидирует, возвращает результат."""
         try:
-            parsed = await self._invoke_chain(
-                chain,
-                {
-                    "tbox_classes": validator.format_hierarchy_tree(),
-                    "tbox_relations": validator.format_relations(),
-                    "known_entities": known_entities or "(пока нет)",
-                    "text": text,
-                },
-            )
+            # 1. Получаем сырые распарсенные данные от LLM
+            parsed_data = await self._run_extraction_chain(text, tbox_classes, tbox_relations, known_entities)
 
-            entities = [
-                RawExtractedEntity(name=e.name.strip(), type=e.type.strip())
-                for e in parsed.entities
-                if e.name.strip()
-                and e.type.strip()
-                and not self._is_bad_entity(e.name.strip())
-            ]
-            valid_names = {e.name.lower() for e in entities}
+            # 2. Обрабатываем сущности
+            entities, valid_names = self._process_entities(parsed_data.entities)
 
-            triples = []
-            for t in parsed.triples:
-                subj, pred, obj = (
-                    t.subject.strip(),
-                    t.predicate.strip(),
-                    t.object.strip(),
-                )
-                if (
-                    subj
-                    and pred
-                    and obj
-                    and (subj.lower() in valid_names or subj in known_entities)
-                    and (obj.lower() in valid_names or obj in known_entities)
-                ):
-                    triples.append(
-                        RawExtractedTriple(subject=subj, predicate=pred, object=obj)
-                    )
-
-            if len(triples) > self._settings.max_triples_per_chunk:
-                triples = triples[: self._settings.max_triples_per_chunk]
+            # 3. Обрабатываем триплеты на основе валидных сущностей
+            triples = self._process_triples(parsed_data.triples, valid_names, known_entities)
 
             return ExtractionResult(entities=entities, triples=triples)
 
@@ -130,26 +90,84 @@ class OllamaClient(ILLMClient):
             logger.exception(f"❌ LLM extraction failed: {e}")
             return ExtractionResult()
 
+    # --- Приватные методы (Инкапсуляция и SRP) ---
+
+    async def _run_extraction_chain(
+        self,
+        text: str,
+        classes: list[SchemaClass],
+        relations: list[SchemaRelation],
+        known_entities: str,
+    ) -> _ExtractionOutput:
+        """Инкапсулирует логику создания и вызова цепочки LangChain."""
+        validator = SchemaValidator(classes, relations)
+        parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
+
+        prompt = get_entity_extraction_prompt().partial(format_instructions=parser.get_format_instructions())
+
+        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
+
+        return await self._invoke_chain(
+            chain,
+            {
+                "tbox_classes": validator.format_hierarchy_tree(),
+                "tbox_relations": validator.format_relations(),
+                "known_entities": known_entities or "(пока нет)",
+                "text": text,
+            },
+        )
+
+    def _process_entities(self, raw_entities: list[_ParsedEntity]) -> tuple[list[RawExtractedEntity], set[str]]:
+        """Фильтрует сущности и собирает сет валидных имен."""
+        valid_entities = []
+        valid_names_lower = set()
+
+        for e in raw_entities:
+            name, entity_type = e.name.strip(), e.type.strip()
+
+            if name and entity_type and not self._is_bad_entity(name):
+                valid_entities.append(RawExtractedEntity(name=name, type=entity_type))
+                valid_names_lower.add(name.lower())
+
+        return valid_entities, valid_names_lower
+
+    def _process_triples(
+        self,
+        raw_triples: list[_ParsedTriple],
+        valid_names: set[str],
+        known_entities: str,
+    ) -> list[RawExtractedTriple]:
+        """Фильтрует триплеты и применяет лимиты."""
+        valid_triples = []
+
+        for t in raw_triples:
+            subj, pred, obj = t.subject.strip(), t.predicate.strip(), t.object.strip()
+
+            if not (subj and pred and obj):
+                continue
+
+            # KISS: Выносим сложные проверки в отдельные переменные
+            subj_is_valid = (subj.lower() in valid_names) or (subj in known_entities)
+            obj_is_valid = (obj.lower() in valid_names) or (obj in known_entities)
+
+            if subj_is_valid and obj_is_valid:
+                valid_triples.append(RawExtractedTriple(subject=subj, predicate=pred, object=obj))
+
+        # Применяем лимит из настроек (срез списка безопасен, даже если элементов меньше)
+        limit = self._settings.max_triples_per_chunk
+        return valid_triples[:limit]
+
     def _is_bad_entity(self, name: str) -> bool:
+        """Проверяет сущность на галлюцинации и мусор."""
         s = self._settings
 
-        # Проверка длины (слишком короткие/длинные)
         if len(name) < s.min_entity_name_chars or len(name) > s.max_entity_name_chars:
             return True
 
-        # Проверка на огромные фразы
         if len(name.split()) > s.max_entity_name_words:
             return True
 
-        # Одиночное слово с маленькой буквы (обычно это абстракция: "модель", "система")
         if len(name.split()) == 1 and name[0].islower() and name.isalpha():
             return True
 
-        # Отлов ТОЛЬКО русских длинных галлюцинаций (CamelCase)
-        # Если слово содержит пробел - это не CamelCase
-        if " " not in name and self._CAMEL_CASE_RE.match(name):
-            # Блокируем, только если длина слова > 12 символов
-            if len(name) > 12:
-                return True
-
-        return False
+        return bool(" " not in name and self._CAMEL_CASE_RE.match(name) and len(name) > 12)

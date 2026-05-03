@@ -7,8 +7,6 @@
   (если Employee ⊂ Person, Company ⊂ Organization).
 """
 
-from typing import Dict, List, Set
-
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 
@@ -17,24 +15,24 @@ class SchemaValidator:
 
     def __init__(
         self,
-        classes: List[SchemaClass],
-        relations: List[SchemaRelation],
+        classes: list[SchemaClass],
+        relations: list[SchemaRelation],
     ):
-        self._classes: Dict[str, SchemaClass] = {c.name.lower(): c for c in classes}
+        self._classes: dict[str, SchemaClass] = {c.name.lower(): c for c in classes}
         self._relations = relations
 
     # ------------------------------------------------------------------
     #  ИЕРАРХИЯ
     # ------------------------------------------------------------------
 
-    def get_ancestors(self, class_name: str) -> Set[str]:
+    def get_ancestors(self, class_name: str) -> set[str]:
         """
         Возвращает множество имён класса и ВСЕХ его предков.
-        Пример: get_ancestors("Company") → {"Company", "Organization"}
+        Пример: get_ancestors("Company") → {"Company", "Organization"}.
         """
-        ancestors: Set[str] = set()
+        ancestors: set[str] = set()
         current = class_name.lower()
-        visited: Set[str] = set()
+        visited: set[str] = set()
 
         while current in self._classes and current not in visited:
             visited.add(current)
@@ -47,28 +45,24 @@ class SchemaValidator:
 
         return ancestors
 
-    def get_descendants(self, class_name: str) -> Set[str]:
+    def get_descendants(self, class_name: str) -> set[str]:
         """
         Возвращает множество имён класса и ВСЕХ его потомков.
-        Пример: get_descendants("Organization") → {"Organization", "Company", "GovernmentOrg"}
+        Пример: get_descendants("Organization") → {"Organization", "Company", "GovernmentOrg"}.
         """
         target = class_name.lower()
-        descendants: Set[str] = set()
+        descendants: set[str] = set()
 
         if target in self._classes:
             descendants.add(self._classes[target].name)
 
         queue = [target]
-        visited: Set[str] = {target}
+        visited: set[str] = {target}
 
         while queue:
             current = queue.pop(0)
             for name_lower, cls in self._classes.items():
-                if (
-                    cls.parent
-                    and cls.parent.lower() == current
-                    and name_lower not in visited
-                ):
+                if cls.parent and cls.parent.lower() == current and name_lower not in visited:
                     visited.add(name_lower)
                     descendants.add(cls.name)
                     queue.append(name_lower)
@@ -99,10 +93,7 @@ class SchemaValidator:
         for rel in self._relations:
             if rel.relation_name.strip().upper() != predicate_norm:
                 continue
-            if (
-                rel.source_class in source_ancestors
-                and rel.target_class in target_ancestors
-            ):
+            if rel.source_class in source_ancestors and rel.target_class in target_ancestors:
                 return True
 
         return False
@@ -111,7 +102,7 @@ class SchemaValidator:
         self,
         source_type: str,
         target_type: str,
-    ) -> List[SchemaRelation]:
+    ) -> list[SchemaRelation]:
         """Все допустимые отношения между двумя типами (с иерархией)."""
         source_ancestors = self.get_ancestors(source_type)
         target_ancestors = self.get_ancestors(target_type)
@@ -119,10 +110,7 @@ class SchemaValidator:
         return [
             rel
             for rel in self._relations
-            if (
-                rel.source_class in source_ancestors
-                and rel.target_class in target_ancestors
-            )
+            if (rel.source_class in source_ancestors and rel.target_class in target_ancestors)
         ]
 
     # ------------------------------------------------------------------
@@ -131,17 +119,17 @@ class SchemaValidator:
 
     def format_hierarchy_tree(self) -> str:
         """Форматирует иерархию классов как дерево с отступами."""
-        children_map: Dict[str, List[str]] = {}
-        roots: List[str] = []
+        children_map: dict[str, list[str]] = {}
+        roots: list[str] = []
 
-        for name_lower, cls in self._classes.items():
+        for cls in self._classes.values():
             if cls.parent:
                 parent_lower = cls.parent.lower()
                 children_map.setdefault(parent_lower, []).append(cls.name)
             else:
                 roots.append(cls.name)
 
-        lines: List[str] = []
+        lines: list[str] = []
 
         def _render(name: str, depth: int) -> None:
             cls = self._classes.get(name.lower())
@@ -164,10 +152,10 @@ class SchemaValidator:
         if not self._relations:
             return "(допустимые отношения не заданы — предложи свои)"
 
-        lines: List[str] = []
+        lines: list[str] = []
         for rel in self._relations:
             desc = f" — {rel.description}" if rel.description else ""
             lines.append(
-                f"• {rel.source_class} → {rel.relation_name} → {rel.target_class}{desc}"
+                f"• {rel.source_class} → {rel.relation_name} → {rel.target_class}{desc}",
             )
         return "\n".join(lines)

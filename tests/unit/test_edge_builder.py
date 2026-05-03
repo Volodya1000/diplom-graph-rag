@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.domain.models.nodes import DocumentNode, ChunkNode, InstanceNode
 from src.domain.models.edges import GraphRelationType
+from src.domain.models.nodes import ChunkNode, DocumentNode, InstanceNode
 from src.domain.services.builders.edge_builder import GraphEdgeBuilder
 
 pytestmark = pytest.mark.unit
@@ -34,11 +34,12 @@ class TestDocumentEdges:
 class TestInstanceEdges:
     def test_produces_exactly_two_edges(self):
         inst = InstanceNode(
-            instance_id="i1", name="Колобок", class_name="Product", chunk_id="c1"
+            instance_id="i1",
+            name="Колобок",
+            class_name="Product",
+            chunk_id="c1",
         )
         edges = GraphEdgeBuilder.build_instance_edges(instance=inst)
         assert len(edges) == 2
-        instance_of = [
-            e for e in edges if e.relation_type == GraphRelationType.INSTANCE_OF
-        ]
+        instance_of = [e for e in edges if e.relation_type == GraphRelationType.INSTANCE_OF]
         assert instance_of[0].target_id == "Product"

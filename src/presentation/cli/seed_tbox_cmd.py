@@ -1,14 +1,17 @@
 """CLI: инициализация T-Box."""
 
 import asyncio
-from rich.console import Console
+
 import typer
+from rich.console import Console
 
 console = Console()
 
+
 def register(): ...
 
-from src.presentation.cli.app import app  # noqa: E402
+
+from src.presentation.cli.app import app
 
 
 @app.command("seed-tbox")
@@ -16,14 +19,14 @@ def seed_tbox_cmd(
     force: bool = typer.Option(False, "--force", "-f"),
     show: bool = typer.Option(False, "--show", "-s"),
 ):
-    """Инициализация базовой онтологии (T-Box) в Neo4j"""
+    """Инициализация базовой онтологии (T-Box) в Neo4j."""
     console.print("[bold cyan]📚 Инициализация T-Box…[/bold cyan]")
     asyncio.run(_run(force, show))
 
 
 async def _run(force: bool, show: bool):
-    from src.di.container import setup_di
     from src.application.use_cases.seed_tbox import SeedTboxUseCase
+    from src.di.container import setup_di
     from src.domain.interfaces.repositories.schema_repository import ISchemaRepository
 
     container = setup_di()
@@ -53,7 +56,7 @@ async def _run(force: bool, show: bool):
                 desc = f" — {rel.description}" if rel.description else ""
                 console.print(
                     f"  {icon} {rel.source_class} → {rel.relation_name} → "
-                    f"{rel.target_class}{desc}  [{rel.status.value}]"
+                    f"{rel.target_class}{desc}  [{rel.status.value}]",
                 )
     finally:
         await container.close()

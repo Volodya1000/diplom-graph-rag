@@ -1,12 +1,14 @@
-from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
 import re
-from .base import Neo4jQuery
+from dataclasses import dataclass
+from typing import Any
+
 from src.domain.models.nodes import InstanceNode
 from src.persistence.neo4j.mappers.node_mappers import (
     map_to_instance,
     map_to_triple_dict,
 )
+
+from .base import Neo4jQuery
 
 _SAFE_REL = re.compile(r"[^A-Za-z0-9_]")
 
@@ -14,8 +16,8 @@ _SAFE_REL = re.compile(r"[^A-Za-z0-9_]")
 @dataclass
 class SaveInstanceQuery(Neo4jQuery[Any]):
     instance_id: str
-    props: Dict[str, Any]
-    embedding: Optional[List[float]] = None
+    props: dict[str, Any]
+    embedding: list[float] | None = None
 
     def get_query(self) -> str:
         if self.embedding:
@@ -30,21 +32,21 @@ class SaveInstanceQuery(Neo4jQuery[Any]):
             SET i += $props
         """
 
-    def get_params(self) -> Dict[str, Any]:
-        p: Dict[str, Any] = {"instance_id": self.instance_id, "props": self.props}
+    def get_params(self) -> dict[str, Any]:
+        p: dict[str, Any] = {"instance_id": self.instance_id, "props": self.props}
         if self.embedding:
             p["embedding"] = self.embedding
         return p
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class FindCandidatesByVectorQuery(Neo4jQuery[InstanceNode]):
-    embedding: List[float]
+    embedding: list[float]
     limit: int = 10
-    threshold: Optional[float] = None
+    threshold: float | None = None
 
     def get_query(self) -> str:
         return """
@@ -61,14 +63,14 @@ class FindCandidatesByVectorQuery(Neo4jQuery[InstanceNode]):
             ORDER BY score DESC
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "embedding": self.embedding,
             "limit": self.limit,
             "threshold": self.threshold,
         }
 
-    def map_record(self, record: Dict[str, Any]) -> InstanceNode:
+    def map_record(self, record: dict[str, Any]) -> InstanceNode:
         return map_to_instance(record)
 
 
@@ -88,14 +90,14 @@ class SaveInstanceRelationQuery(Neo4jQuery[Any]):
             SET r.chunk_id = $chunk_id
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "source_id": self.source_id,
             "target_id": self.target_id,
             "chunk_id": self.chunk_id,
         }
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -113,15 +115,15 @@ class GetInstancesByChunkQuery(Neo4jQuery[InstanceNode]):
                    i.embedding AS embedding
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"chunk_id": self.chunk_id}
 
-    def map_record(self, record: Dict[str, Any]) -> InstanceNode:
+    def map_record(self, record: dict[str, Any]) -> InstanceNode:
         return map_to_instance(record)
 
 
 @dataclass
-class GetTriplesByChunkQuery(Neo4jQuery[Dict[str, Any]]):
+class GetTriplesByChunkQuery(Neo4jQuery[dict[str, Any]]):
     chunk_id: str
 
     def get_query(self) -> str:
@@ -135,10 +137,10 @@ class GetTriplesByChunkQuery(Neo4jQuery[Dict[str, Any]]):
                    tgt.class_name AS object_type
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"chunk_id": self.chunk_id}
 
-    def map_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any]) -> dict[str, Any]:
         return map_to_triple_dict(record)
 
 
@@ -159,10 +161,10 @@ class GetInstancesByDocumentQuery(Neo4jQuery[InstanceNode]):
                    i.embedding AS embedding
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"doc_id": self.doc_id}
 
-    def map_record(self, record: Dict[str, Any]) -> InstanceNode:
+    def map_record(self, record: dict[str, Any]) -> InstanceNode:
         return map_to_instance(record)
 
 
@@ -179,17 +181,17 @@ class GetAllInstancesQuery(Neo4jQuery[InstanceNode]):
                    i.embedding AS embedding
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {}
 
-    def map_record(self, record: Dict[str, Any]) -> InstanceNode:
+    def map_record(self, record: dict[str, Any]) -> InstanceNode:
         return map_to_instance(record)
 
 
 # ==================== MERGE QUERIES ====================
 @dataclass
 class TransferAliasIncomingEdgesQuery(Neo4jQuery[Any]):
-    alias_ids: List[str]
+    alias_ids: list[str]
     canonical_id: str
 
     def get_query(self) -> str:
@@ -204,16 +206,16 @@ class TransferAliasIncomingEdgesQuery(Neo4jQuery[Any]):
             DELETE r
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"alias_ids": self.alias_ids, "canonical_id": self.canonical_id}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class TransferAliasOutgoingEdgesQuery(Neo4jQuery[Any]):
-    alias_ids: List[str]
+    alias_ids: list[str]
     canonical_id: str
 
     def get_query(self) -> str:
@@ -228,16 +230,16 @@ class TransferAliasOutgoingEdgesQuery(Neo4jQuery[Any]):
             DELETE r
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"alias_ids": self.alias_ids, "canonical_id": self.canonical_id}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class TransferAliasMentionedInQuery(Neo4jQuery[Any]):
-    alias_ids: List[str]
+    alias_ids: list[str]
     canonical_id: str
 
     def get_query(self) -> str:
@@ -249,10 +251,10 @@ class TransferAliasMentionedInQuery(Neo4jQuery[Any]):
             DELETE r
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"alias_ids": self.alias_ids, "canonical_id": self.canonical_id}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
@@ -260,7 +262,7 @@ class TransferAliasMentionedInQuery(Neo4jQuery[Any]):
 class UpdateCanonicalInstanceQuery(Neo4jQuery[Any]):
     canonical_id: str
     canonical_name: str
-    aliases: List[str]
+    aliases: list[str]
 
     def get_query(self) -> str:
         return """
@@ -269,20 +271,20 @@ class UpdateCanonicalInstanceQuery(Neo4jQuery[Any]):
                 c.aliases = $aliases
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "canonical_id": self.canonical_id,
             "canonical_name": self.canonical_name,
             "aliases": self.aliases,
         }
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None
 
 
 @dataclass
 class DeleteAliasInstancesQuery(Neo4jQuery[Any]):
-    alias_ids: List[str]
+    alias_ids: list[str]
 
     def get_query(self) -> str:
         return """
@@ -291,8 +293,8 @@ class DeleteAliasInstancesQuery(Neo4jQuery[Any]):
             DETACH DELETE alias
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {"alias_ids": self.alias_ids}
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None

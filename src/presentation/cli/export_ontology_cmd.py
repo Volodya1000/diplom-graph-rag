@@ -1,26 +1,34 @@
 """CLI: Экспорт T-Box в Turtle (OWL) для Protégé."""
+
 import asyncio
 from pathlib import Path
+
 import typer
 from rich.console import Console
 
 console = Console()
 
+
 def register(): ...
 
-from src.presentation.cli.app import app  # noqa: E402
+
+from src.presentation.cli.app import app
+
 
 @app.command("export-ontology")
 def export_ontology_cmd(
     output: Path = typer.Option(
         "data/ontology/gr_a3_ontology.ttl",
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Путь к файлу .ttl",
         dir_okay=False,
         writable=True,
     ),
     force: bool = typer.Option(
-        False, "--force", "-f",
+        False,
+        "--force",
+        "-f",
         help="Перезаписать существующий файл",
     ),
 ):
@@ -35,8 +43,8 @@ async def _run(output_path: Path, force: bool):
         console.print("   Используйте --force для перезаписи.")
         return
 
-    from src.di.container import setup_di
     from src.application.use_cases.export_ontology import ExportOntologyUseCase
+    from src.di.container import setup_di
 
     container = setup_di()
     try:

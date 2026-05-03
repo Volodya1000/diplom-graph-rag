@@ -14,7 +14,7 @@ console = Console()
 def register(): ...
 
 
-from src.presentation.cli.app import app  # noqa: E402
+from src.presentation.cli.app import app
 
 
 @app.command("ask")
@@ -28,22 +28,21 @@ def ask_cmd(
     ),
     top_k: int = typer.Option(10, "--top-k", "-k"),
 ):
-    """Задать вопрос по графу знаний"""
+    """Задать вопрос по графу знаний."""
     console.print(f"[bold cyan]❓[/bold cyan] {question}")
     asyncio.run(_run(question, mode, top_k))
 
 
 async def _run(question: str, mode_str: str, top_k: int):
-    from src.di.container import setup_di
     from src.application.use_cases.answer_question import AnswerQuestionUseCase
+    from src.di.container import setup_di
     from src.domain.models.search import SearchMode
 
     try:
         search_mode = SearchMode(mode_str)
     except ValueError:
         console.print(
-            f"[red]❌ Неизвестный режим: '{mode_str}'. "
-            f"Доступны: local, global, local_ppr, hybrid[/red]"
+            f"[red]❌ Неизвестный режим: '{mode_str}'. Доступны: local, global, local_ppr, hybrid[/red]",
         )
         return
 
@@ -61,7 +60,7 @@ async def _run(question: str, mode_str: str, top_k: int):
                 response.answer,
                 title=f"[bold green]Ответ[/bold green] ({response.search_mode})",
                 border_style="green",
-            )
+            ),
         )
 
         if response.sources:
@@ -71,11 +70,7 @@ async def _run(question: str, mode_str: str, top_k: int):
             table.add_column("Чанк")
             table.add_column("Relevance")
             for src in response.sources:
-                pages = (
-                    f"{src.start_page}-{src.end_page}"
-                    if src.start_page != src.end_page
-                    else str(src.start_page)
-                )
+                pages = f"{src.start_page}-{src.end_page}" if src.start_page != src.end_page else str(src.start_page)
                 if src.start_page == 0:
                     pages = "?"
                 table.add_row(
@@ -90,7 +85,7 @@ async def _run(question: str, mode_str: str, top_k: int):
         console.print(
             f"\n[dim]📊 chunks={stats.get('chunks_count', 0)} "
             f"triples={stats.get('triples_count', 0)} "
-            f"communities={stats.get('communities_count', 0)}[/dim]"
+            f"communities={stats.get('communities_count', 0)}[/dim]",
         )
 
     except Exception as e:

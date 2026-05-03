@@ -1,7 +1,8 @@
-import pytest
 import io
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from src.application.services.file_storage_service import LocalFileStorageService
 
@@ -29,10 +30,7 @@ class TestLocalFileStorageService:
 
         # Имя с пробелами и кириллицей (должно быть URL-encoded)
         url2 = file_storage.get_download_url("Отчет 2024.pdf")
-        assert (
-            url2
-            == "http://my-fastapi.local:8000/uploads/%D0%9E%D1%82%D1%87%D0%B5%D1%82%202024.pdf"
-        )
+        assert url2 == "http://my-fastapi.local:8000/uploads/%D0%9E%D1%82%D1%87%D0%B5%D1%82%202024.pdf"
 
     def test_get_download_url_empty_filename_returns_empty(self, file_storage):
         assert file_storage.get_download_url("") == ""

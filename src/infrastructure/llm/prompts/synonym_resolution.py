@@ -30,11 +30,14 @@ _HUMAN = (
     "=== СУЩНОСТИ ===\n"
     "{entities_list}\n\n"
     "Найди группы синонимов среди сущностей выше. "
-    "Если синонимов нет — верни {{\"groups\": []}}."
+    'Если синонимов нет — верни {{"groups": []}}.'
 )
 
+
 def get_synonym_resolution_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        ("system", _SYSTEM),
-        ("human", _HUMAN),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", _SYSTEM),
+            ("human", _HUMAN),
+        ]
+    )

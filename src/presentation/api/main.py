@@ -1,17 +1,17 @@
 """Точка входа для FastAPI."""
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dishka.integrations.fastapi import setup_dishka
 from starlette.staticfiles import StaticFiles
 
 from src.di.container import setup_di
 from src.presentation.api.routers import chat, documents
 from src.utils.logging import setup_logging
-import logging
 
 setup_logging(level=logging.INFO, disable_verbose=True)
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
         await schema_repo.ensure_indexes()
         logger.info("📐 Векторные индексы Neo4j успешно обеспечены (startup)")
     except Exception as e:
-        logger.error(f"❌ Ошибка при создании индексов на старте: {e}")
+        logger.exception(f"❌ Ошибка при создании индексов на старте: {e}")
 
     yield
 

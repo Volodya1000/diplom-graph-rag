@@ -1,9 +1,8 @@
-"""
-Общие утилиты очистки LLM-вывода.
-"""
+"""Общие утилиты очистки LLM-вывода."""
 
-import re
 import logging
+import re
+
 from langchain_core.messages import AIMessage
 
 logger = logging.getLogger(__name__)
@@ -15,11 +14,7 @@ _RE_CODE_BLOCK: re.Pattern[str] = re.compile(r"```(?:json)?\s*", re.IGNORECASE)
 
 def clean_json_output(message: AIMessage) -> str:
     """Очищает JSON от тегов <think> и Markdown-блоков."""
-    text: str = (
-        message.content
-        if isinstance(message, AIMessage) and isinstance(message.content, str)
-        else str(message)
-    )
+    text: str = message.content if isinstance(message, AIMessage) and isinstance(message.content, str) else str(message)
     text = _RE_THINK.sub("", text)
     text = _RE_CODE_BLOCK.sub("", text).replace("```", "").strip()
 
@@ -31,9 +26,5 @@ def clean_json_output(message: AIMessage) -> str:
 
 def clean_text_output(message: AIMessage) -> str:
     """Очищает обычный текст от тегов <think>."""
-    text: str = (
-        message.content
-        if isinstance(message, AIMessage) and isinstance(message.content, str)
-        else str(message)
-    )
+    text: str = message.content if isinstance(message, AIMessage) and isinstance(message.content, str) else str(message)
     return _RE_THINK.sub("", text).strip()

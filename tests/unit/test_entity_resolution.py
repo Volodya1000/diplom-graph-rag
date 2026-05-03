@@ -1,12 +1,11 @@
-"""
-Unit: EntityResolutionMatcher — правила матчинга сущностей.
-"""
+"""Unit: EntityResolutionMatcher — правила матчинга сущностей."""
 
-import pytest
 import Levenshtein as Lev
-from src.domain.resolution_rules import EntityResolutionMatcher
+import pytest
+
 from src.domain.models.extraction import RawExtractedEntity
 from src.domain.models.nodes import InstanceNode
+from src.domain.resolution_rules import EntityResolutionMatcher
 
 pytestmark = pytest.mark.unit
 
@@ -80,9 +79,7 @@ class TestStrictNameMatch:
     def test_one_char_diff_in_long_name_matches(self, matcher):
         # Длина >= 20 → 1 символ разницы даёт sim >= 0.95
         cand_name = "АлександровВеликийПобедитель2025"
-        target_name = (
-            "АлександровВеликийПобедитель2026"  # только последняя цифра отличается
-        )
+        target_name = "АлександровВеликийПобедитель2026"  # только последняя цифра отличается
 
         sim = _sim(target_name, cand_name)
         assert sim >= 0.95, f"Precondition: similarity={sim:.3f} must be ≥0.95"
@@ -128,9 +125,7 @@ class TestThresholdMatch:
         cand_name = "Колобочек"
         target_name = "Колобочок"
         sim = _sim(target_name, cand_name)
-        assert 0.85 <= sim < 0.95, (
-            f"Precondition: sim={sim:.3f} must be in [0.85, 0.95)"
-        )
+        assert 0.85 <= sim < 0.95, f"Precondition: sim={sim:.3f} must be in [0.85, 0.95)"
 
         candidates = [
             InstanceNode(

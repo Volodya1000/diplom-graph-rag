@@ -1,6 +1,4 @@
-"""
-Промпт для извлечения сущностей и троек — с контекстом известных сущностей.
-"""
+"""Промпт для извлечения сущностей и троек — с контекстом известных сущностей."""
 
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -51,5 +49,5 @@ def get_entity_extraction_prompt() -> ChatPromptTemplate:
         [
             ("system", system_message),
             ("human", human_message),
-        ]
+        ],
     )

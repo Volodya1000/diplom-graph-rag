@@ -1,11 +1,9 @@
-"""
-Integration: Neo4jEdgeRepository — структурные рёбра графа.
-"""
+"""Integration: Neo4jEdgeRepository — структурные рёбра графа."""
 
 import pytest
-from src.domain.models.nodes import DocumentNode, ChunkNode
-from src.domain.models.edges import GraphEdge, GraphRelationType
 
+from src.domain.models.edges import GraphEdge, GraphRelationType
+from src.domain.models.nodes import ChunkNode, DocumentNode
 
 pytestmark = pytest.mark.integration
 

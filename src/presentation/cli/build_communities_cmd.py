@@ -13,7 +13,7 @@ console = Console()
 def register(): ...
 
 
-from src.presentation.cli.app import app  # noqa: E402
+from src.presentation.cli.app import app
 
 
 @app.command("build-communities")
@@ -47,7 +47,7 @@ def build_communities_cmd(
         help="Показать сообщества после создания",
     ),
 ):
-    """Запуск community detection и генерация summaries"""
+    """Запуск community detection и генерация summaries."""
     console.print(f"[bold cyan]🧩 Community Detection[/bold cyan] ({algorithm})")
     asyncio.run(_run(algorithm, min_size, no_summaries, force, show))
 
@@ -59,10 +59,10 @@ async def _run(
     force: bool,
     show: bool,
 ):
-    from src.di.container import setup_di
     from src.application.use_cases.build_communities import (
         BuildCommunitiesUseCase,
     )
+    from src.di.container import setup_di
     from src.domain.interfaces.services.graph_analytics_service import (
         IGraphAnalyticsService,
     )
@@ -79,7 +79,7 @@ async def _run(
 
         console.print(
             f"[bold green]✔ Сообществ: {result['communities']}, "
-            f"summaries: {result['summaries_generated']}[/bold green]"
+            f"summaries: {result['summaries_generated']}[/bold green]",
         )
 
         if show:
@@ -102,9 +102,7 @@ async def _run(
             ):
                 entities = ", ".join(comm.key_entities[:5])
                 summary = (
-                    (comm.summary[:80] + "…")
-                    if comm.summary and len(comm.summary) > 80
-                    else (comm.summary or "—")
+                    (comm.summary[:80] + "…") if comm.summary and len(comm.summary) > 80 else (comm.summary or "—")
                 )
                 table.add_row(
                     str(comm.community_id),

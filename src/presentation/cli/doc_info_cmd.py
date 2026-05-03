@@ -2,21 +2,24 @@
 
 import asyncio
 import logging
-from rich.console import Console
+
 import typer
+from rich.console import Console
 
 console = Console()
 
+
 def register(): ...
 
-from src.presentation.cli.app import app  # noqa: E402
+
+from src.presentation.cli.app import app
 
 
 @app.command("doc-info")
 def doc_info_cmd(
     filename: str = typer.Argument(..., help="Имя файла документа"),
 ):
-    """Показать чанки, сущности и триплеты документа"""
+    """Показать чанки, сущности и триплеты документа."""
     console.print(f"[bold cyan]📄 Документ:[/bold cyan] {filename}")
     asyncio.run(_run(filename))
 
@@ -47,7 +50,7 @@ async def _run(filename: str):
 
             for t in await inst_repo.get_triples_by_chunk(chunk.chunk_id):
                 console.print(
-                    f"  🔗 {t['subject_name']} —{t['predicate']}→ {t['object_name']}"
+                    f"  🔗 {t['subject_name']} —{t['predicate']}→ {t['object_name']}",
                 )
     except Exception as e:
         console.print(f"[bold red]✖ {e}[/bold red]")

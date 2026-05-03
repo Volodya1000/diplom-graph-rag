@@ -1,27 +1,27 @@
 import uuid
-from typing import Dict, List, Optional, Tuple
+
 import Levenshtein as Lev
 
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.models.extraction import (
     ExtractionResult,
-    ResolvedTriple,
     RawExtractedEntity,
+    ResolvedTriple,
 )
 from src.domain.models.nodes import InstanceNode
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.domain.resolution_rules import EntityResolutionMatcher
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
-from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
 from src.domain.utils.normalize_predicate import normalize_predicate
 
 
 class EntityRegistry:
     def __init__(self, levenshtein_threshold: float = 0.85):
-        self._by_name: Dict[str, InstanceNode] = {}
+        self._by_name: dict[str, InstanceNode] = {}
         self._threshold = levenshtein_threshold
 
-    def find(self, name: str) -> Optional[InstanceNode]:
+    def find(self, name: str) -> InstanceNode | None:
         key = name.strip().lower()
         if key in self._by_name:
             return self._by_name[key]
@@ -42,7 +42,7 @@ class EntityRegistry:
         return 1.0 - Lev.distance(a, b) / max(len(a), len(b))
 
     @property
-    def all_instances(self) -> List[InstanceNode]:
+    def all_instances(self) -> list[InstanceNode]:
         return list(self._by_name.values())
 
     def format_known_entities(self) -> str:
@@ -81,23 +81,23 @@ class EntityResolutionOrchestrator:
     async def process_extraction(
         self,
         extraction: ExtractionResult,
-        current_classes: List[SchemaClass],
-        current_relations: List[SchemaRelation],
+        current_classes: list[SchemaClass],
+        current_relations: list[SchemaRelation],
         chunk_id: str,
         registry: EntityRegistry,
-    ) -> Tuple[
-        List[InstanceNode],
-        List[SchemaClass],
-        List[ResolvedTriple],
-        List[SchemaRelation],
+    ) -> tuple[
+        list[InstanceNode],
+        list[SchemaClass],
+        list[ResolvedTriple],
+        list[SchemaRelation],
     ]:
 
-        instances: List[InstanceNode] = []
-        resolved_triples: List[ResolvedTriple] = []
+        instances: list[InstanceNode] = []
+        resolved_triples: list[ResolvedTriple] = []
 
         # Индексируем разрешенные классы (приводим к нижнему регистру для сравнения)
         allowed_classes = {c.name.lower(): c.name for c in current_classes}
-        chunk_name_map: Dict[str, InstanceNode] = {}
+        chunk_name_map: dict[str, InstanceNode] = {}
         validator = SchemaValidator(current_classes, current_relations)
 
         # ---- 1. Сущности ----
@@ -130,7 +130,8 @@ class EntityResolutionOrchestrator:
 
             if match_id:
                 matched = next(
-                    (c for c in candidates if c.instance_id == match_id), None
+                    (c for c in candidates if c.instance_id == match_id),
+                    None,
                 )
                 inst = InstanceNode(
                     instance_id=match_id,
@@ -166,7 +167,9 @@ class EntityResolutionOrchestrator:
             # СТРОГОЕ ПРАВИЛО: Если связь не разрешена T-Box (SchemaValidator),
             # мы полностью отбрасываем этот триплет. Никаких новых отношений в графе.
             if not validator.is_relation_allowed(
-                src_inst.class_name, predicate, tgt_inst.class_name
+                src_inst.class_name,
+                predicate,
+                tgt_inst.class_name,
             ):
                 continue
 
@@ -176,7 +179,7 @@ class EntityResolutionOrchestrator:
                     relation_name=predicate,
                     target_instance_id=tgt_inst.instance_id,
                     chunk_id=chunk_id,
-                )
+                ),
             )
 
         # Возвращаем пустые списки для new_classes и new_relations,
@@ -186,8 +189,8 @@ class EntityResolutionOrchestrator:
     @staticmethod
     def _find_instance(
         entity_name: str,
-        name_map: Dict[str, InstanceNode],
-    ) -> Optional[InstanceNode]:
+        name_map: dict[str, InstanceNode],
+    ) -> InstanceNode | None:
         key = entity_name.strip().lower()
         if key in name_map:
             return name_map[key]

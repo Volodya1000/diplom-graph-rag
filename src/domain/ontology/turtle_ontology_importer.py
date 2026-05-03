@@ -1,5 +1,5 @@
-from typing import List, Tuple
-from rdflib import Graph, RDF, RDFS, OWL
+from rdflib import OWL, RDF, RDFS, Graph
+
 from .schema import SchemaClass, SchemaRelation, SchemaStatus
 
 # pip install rdflib  # один раз
@@ -9,12 +9,12 @@ class TurtleOntologyImporter:
     """Чистый домен: парсит только то, что мы экспортируем (классы + ObjectProperty)."""
 
     @staticmethod
-    def from_ttl(ttl_text: str) -> Tuple[List[SchemaClass], List[SchemaRelation]]:
+    def from_ttl(ttl_text: str) -> tuple[list[SchemaClass], list[SchemaRelation]]:
         g = Graph()
         g.parse(data=ttl_text, format="turtle")
 
-        classes: List[SchemaClass] = []
-        relations: List[SchemaRelation] = []
+        classes: list[SchemaClass] = []
+        relations: list[SchemaRelation] = []
 
         # Классы
         for subj in g.subjects(RDF.type, OWL.Class):
@@ -29,7 +29,7 @@ class TurtleOntologyImporter:
                     status=SchemaStatus.DRAFT,
                     description=str(comment) if comment else "",
                     parent=parent_name,
-                )
+                ),
             )
 
         # ObjectProperty (может быть несколько domain/range)
@@ -48,7 +48,7 @@ class TurtleOntologyImporter:
                             target_class=r,
                             status=SchemaStatus.DRAFT,
                             description=str(comment) if comment else "",
-                        )
+                        ),
                     )
 
         return classes, relations

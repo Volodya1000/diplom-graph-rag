@@ -1,11 +1,12 @@
 """Сборка Typer-приложения."""
 
 import logging
+
 from src.utils.logging import setup_logging
 
 setup_logging(level=logging.INFO, disable_verbose=True)
 
-import typer  # noqa: E402
+import typer
 
 app = typer.Typer(
     name="graphrag",

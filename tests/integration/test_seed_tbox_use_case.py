@@ -1,16 +1,13 @@
-"""
-Integration: SeedTboxUseCase — полный happy path через все слои.
-"""
+"""Integration: SeedTboxUseCase — полный happy path через все слои."""
 
 import pytest
-from src.application.use_cases.seed_tbox import SeedTboxUseCase
 
+from src.application.use_cases.seed_tbox import SeedTboxUseCase
 
 pytestmark = pytest.mark.integration
 
 
 class TestSeedTboxHappyPath:
-
     async def test_first_seed_creates_all_elements(self, schema_repo):
         use_case = SeedTboxUseCase(schema_repo=schema_repo)
 

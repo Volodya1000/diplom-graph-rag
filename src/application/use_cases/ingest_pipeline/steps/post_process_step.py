@@ -1,7 +1,8 @@
 import logging
 import time
-from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
+
 from src.application.services.post_processing_service import PostProcessingService
+from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +34,14 @@ class PostProcessSynonymsStep(IIngestStep):
             logger.info(
                 f"🔗 Синонимы обработаны за {duration:.1f}с | "
                 f"групп: {len(syn_result.groups)} | "
-                f"объединено: {syn_result.merged_count}"
+                f"объединено: {syn_result.merged_count}",
             )
 
             for i, group in enumerate(syn_result.groups, 1):
                 logger.info(
-                    f"   Группа {i}: «{group.canonical_name}» ← {group.aliases}"
+                    f"   Группа {i}: «{group.canonical_name}» ← {group.aliases}",
                 )
         else:
             logger.info(
-                f"✅ Постобработка завершена за {duration:.1f}с (синонимов не найдено)"
+                f"✅ Постобработка завершена за {duration:.1f}с (синонимов не найдено)",
             )

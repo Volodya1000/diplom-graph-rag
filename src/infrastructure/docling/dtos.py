@@ -1,14 +1,15 @@
 from dataclasses import dataclass
-from typing import List, Optional
+
 
 @dataclass
 class ChunkMetadata:
     chunk_index: int
-    headings: List[str]
+    headings: list[str]
     start_page: int
     end_page: int
-    doc_hash: Optional[str] = None
-    doc_filename: Optional[str] = None
+    doc_hash: str | None = None
+    doc_filename: str | None = None
+
 
 @dataclass
 class ProcessedChunk:

@@ -1,10 +1,8 @@
-"""
-Integration: Neo4jDocumentRepository — документы и чанки.
-"""
+"""Integration: Neo4jDocumentRepository — документы и чанки."""
 
 import pytest
-from src.domain.models.nodes import DocumentNode, ChunkNode
 
+from src.domain.models.nodes import ChunkNode, DocumentNode
 
 pytestmark = pytest.mark.integration
 

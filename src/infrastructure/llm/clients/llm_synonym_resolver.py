@@ -1,20 +1,19 @@
 import logging
-from typing import List
 
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
 from tenacity import (
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
 )
 
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
 from src.domain.models.nodes import InstanceNode
 from src.domain.models.synonym import SynonymGroup, SynonymResolutionResult
-from src.infrastructure.llm.llm_factory import ChatOllamaFactory
+from src.infrastructure.llm.llm_factory import ChatModelFactory
 from src.infrastructure.llm.prompts.synonym_resolution import (
     get_synonym_resolution_prompt,
 )
@@ -25,16 +24,16 @@ logger = logging.getLogger(__name__)
 class _SynonymGroupParsed(BaseModel):
     canonical_name: str
     canonical_type: str = ""
-    aliases: List[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
     reason: str = ""
 
 
 class _SynonymOutput(BaseModel):
-    groups: List[_SynonymGroupParsed] = Field(default_factory=list)
+    groups: list[_SynonymGroupParsed] = Field(default_factory=list)
 
 
 class OllamaSynonymResolver(ISynonymResolver):
-    def __init__(self, factory: ChatOllamaFactory):
+    def __init__(self, factory: ChatModelFactory):
         self._llm = factory.create_json(temperature=0.1)
 
     @retry(
@@ -49,7 +48,7 @@ class OllamaSynonymResolver(ISynonymResolver):
 
     async def find_synonym_groups(
         self,
-        instances: List[InstanceNode],
+        instances: list[InstanceNode],
         document_context: str,
         text_snippets: str = "",
     ) -> SynonymResolutionResult:
@@ -66,7 +65,8 @@ class OllamaSynonymResolver(ISynonymResolver):
 
         # === УПРОЩЕНИЕ: with_structured_output ===
         structured_llm = self._llm.with_structured_output(
-            _SynonymOutput, method="json_mode"
+            _SynonymOutput,
+            method="json_mode",
         )
         prompt = get_synonym_resolution_prompt()
 
@@ -87,9 +87,7 @@ class OllamaSynonymResolver(ISynonymResolver):
                 if not g.canonical_name.strip() or not g.aliases:
                     continue
                 all_ids = {
-                    iid
-                    for name in [g.canonical_name] + g.aliases
-                    for iid in id_by_name.get(name.strip().lower(), [])
+                    iid for name in [g.canonical_name, *g.aliases] for iid in id_by_name.get(name.strip().lower(), [])
                 }
                 groups.append(
                     SynonymGroup(
@@ -98,7 +96,7 @@ class OllamaSynonymResolver(ISynonymResolver):
                         aliases=[a.strip() for a in g.aliases],
                         instance_ids=list(all_ids),
                         reason=g.reason,
-                    )
+                    ),
                 )
 
             merged = sum(len(g.aliases) for g in groups)

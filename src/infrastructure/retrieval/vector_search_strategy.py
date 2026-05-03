@@ -1,7 +1,7 @@
 import logging
-from typing import List
-from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
+
 from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 from src.domain.models.search import RetrievalResult, RetrievedChunk, RetrievedTriple
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 class VectorSearchStrategy(IRetrievalStrategy):
     def __init__(
-        self, session_manager: Neo4jSessionManager, instance_repo: IInstanceRepository
+        self,
+        session_manager: Neo4jSessionManager,
+        instance_repo: IInstanceRepository,
     ):
         self._sm = session_manager
         self._instance_repo = instance_repo
@@ -20,7 +22,10 @@ class VectorSearchStrategy(IRetrievalStrategy):
         return "vector_search_local"
 
     async def retrieve(
-        self, query: str, query_embedding: List[float], top_k: int = 10
+        self,
+        query: str,
+        query_embedding: list[float],
+        top_k: int = 10,
     ) -> RetrievalResult:
         chunks = await self._search_chunks(query_embedding, top_k)
         triples = []
@@ -34,15 +39,19 @@ class VectorSearchStrategy(IRetrievalStrategy):
                         object=t["object_name"],
                         object_type=t["object_type"],
                         score=chunk.score,
-                    )
+                    ),
                 )
         return RetrievalResult(
-            chunks=chunks, triples=triples, metadata={"strategy": self.name}
+            chunks=chunks,
+            triples=triples,
+            metadata={"strategy": self.name},
         )
 
     async def _search_chunks(
-        self, embedding: List[float], limit: int
-    ) -> List[RetrievedChunk]:
+        self,
+        embedding: list[float],
+        limit: int,
+    ) -> list[RetrievedChunk]:
         query = """
         CALL db.index.vector.queryNodes('chunk_embedding', $limit, $embedding)
         YIELD node AS c, score
@@ -52,9 +61,7 @@ class VectorSearchStrategy(IRetrievalStrategy):
         ORDER BY score DESC
         """
         async with self._sm.session() as s:
-            data = await (
-                await s.run(query, {"embedding": embedding, "limit": limit})
-            ).data()
+            data = await (await s.run(query, {"embedding": embedding, "limit": limit})).data()
         return [
             RetrievedChunk(
                 chunk_id=r["chunk_id"],

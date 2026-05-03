@@ -1,0 +1,40 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+
+  - repo: local
+    hooks:
+#      - id: ruff
+#        name: ruff
+#        entry: uv run ruff check
+#        language: system
+#        types: [python]
+
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
+#      - id: pylint
+#        name: pylint
+#        entry: uv run pylint --rcfile=pyproject.toml
+#        language: system
+#        types: [python]
+#        files: ^pipelines/assistants/
+#
+#      - id: bandit
+#        name: bandit
+#        entry: uv run bandit -c pyproject.toml -r
+#        language: system
+#        types: [python]
+#        files: ^pipelines/assistants/
+#        args: [--severity-level=high]

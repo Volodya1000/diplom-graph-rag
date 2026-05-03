@@ -1,9 +1,8 @@
-"""
-Управление жизненным циклом Neo4j-драйвера.
-"""
+"""Управление жизненным циклом Neo4j-драйвера."""
 
 import logging
-from neo4j import AsyncGraphDatabase, AsyncDriver
+
+from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from src.config.neo4j_settings import Neo4jSettings
 

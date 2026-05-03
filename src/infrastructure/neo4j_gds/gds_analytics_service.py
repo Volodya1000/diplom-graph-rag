@@ -1,20 +1,21 @@
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
 from src.domain.models.community import GraphCommunity
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
 from src.persistence.neo4j.queries.analytics_queries import (
-    GraphExistsQuery,
-    GraphProjectQuery,
-    DropProjectionQuery,
+    CleanupSmallCommunitiesQuery,
     DetectCommunitiesQuery,
+    DropProjectionQuery,
     GetCommunitiesQuery,
     GetCommunityMembersQuery,
-    SaveCommunitySummaryQuery,
+    GraphExistsQuery,
+    GraphProjectQuery,
     PersonalizedPageRankQuery,
-    CleanupSmallCommunitiesQuery,
+    SaveCommunitySummaryQuery,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,49 +44,54 @@ class Neo4jGDSAnalyticsService(Neo4jBaseRepository, IGraphAnalyticsService):
         projection_name: str = "instance_graph",
         write_property: str = "community_id",
     ) -> int:
-        algo_call = {"leiden": "gds.leiden.write", "louvain": "gds.louvain.write"}[
-            algorithm
-        ]
+        algo_call = {"leiden": "gds.leiden.write", "louvain": "gds.louvain.write"}[algorithm]
         data = await self._fetch_all(
             DetectCommunitiesQuery(
-                projection=projection_name, prop=write_property, algo_call=algo_call
-            )
+                projection=projection_name,
+                prop=write_property,
+                algo_call=algo_call,
+            ),
         )
         count = data[0]["communityCount"]
         logger.info(f"🧩 {algorithm}: {count} сообществ")
         return count
 
-    async def get_communities(self) -> List[GraphCommunity]:
+    async def get_communities(self) -> list[GraphCommunity]:
         return await self._fetch_all(GetCommunitiesQuery())
 
-    async def get_community_members(self, community_id: int) -> List[Dict[str, Any]]:
+    async def get_community_members(self, community_id: int) -> list[dict[str, Any]]:
         return await self._fetch_all(
-            GetCommunityMembersQuery(community_id=community_id)
+            GetCommunityMembersQuery(community_id=community_id),
         )
 
     async def save_community_summary(
-        self, community_id: int, summary: str, key_entities: List[str]
+        self,
+        community_id: int,
+        summary: str,
+        key_entities: list[str],
     ) -> None:
         await self._execute(
             SaveCommunitySummaryQuery(
-                community_id=community_id, summary=summary, key_entities=key_entities
-            )
+                community_id=community_id,
+                summary=summary,
+                key_entities=key_entities,
+            ),
         )
 
     async def personalized_pagerank(
         self,
-        seed_instance_ids: List[str],
+        seed_instance_ids: list[str],
         top_k: int = 20,
         damping_factor: float = 0.85,
         projection_name: str = "instance_graph",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         return await self._fetch_all(
             PersonalizedPageRankQuery(
                 seed_ids=seed_instance_ids,
                 projection=projection_name,
                 damping=damping_factor,
                 top_k=top_k,
-            )
+            ),
         )
 
     async def cleanup_small_communities(self, min_size: int) -> int:
@@ -93,6 +99,6 @@ class Neo4jGDSAnalyticsService(Neo4jBaseRepository, IGraphAnalyticsService):
         count = data[0] if data else 0
         if count > 0:
             logger.info(
-                f"🧹 Удалено {count} узлов из слишком мелких сообществ (размер < {min_size})"
+                f"🧹 Удалено {count} узлов из слишком мелких сообществ (размер < {min_size})",
             )
         return count

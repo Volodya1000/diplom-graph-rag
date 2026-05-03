@@ -9,13 +9,13 @@ neo4j:
   embedding_dim: 384
   vector_search_threshold: 0.70
 
-ollama:
+llm:
+  provider: ollama
   model_name: "gpt-oss:120b-cloud"
   temperature: 0.1
-  num_ctx: 4096
+  max_tokens: 4096
   is_cloud: true
   local_url: "http://localhost:11434"
-  # api_key берется из .env
 
 chunking:
   tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2"

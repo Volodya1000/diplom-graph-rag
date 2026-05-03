@@ -1,20 +1,27 @@
 """CLI: Импорт онтологии из TTL (Protégé → Neo4j)."""
+
 import asyncio
 from pathlib import Path
+
 import typer
 from rich.console import Console
 
 console = Console()
 
+
 def register(): ...
 
-from src.presentation.cli.app import app  # noqa: E402
+
+from src.presentation.cli.app import app
 
 
 @app.command("import-ontology")
 def import_ontology_cmd(
     ttl: Path = typer.Argument(
-        ..., help="Путь к .ttl файлу", exists=True, readable=True
+        ...,
+        help="Путь к .ttl файлу",
+        exists=True,
+        readable=True,
     ),
 ):
     """Импорт онтологии из Protégé (Turtle) с валидацией."""
@@ -23,8 +30,8 @@ def import_ontology_cmd(
 
 
 async def _run(ttl_path: Path):
-    from src.di.container import setup_di
     from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
+    from src.di.container import setup_di
 
     container = setup_di()
     try:
@@ -34,13 +41,13 @@ async def _run(ttl_path: Path):
         console.print(
             f"[bold green]✅ Успешно обновлено:[/bold green] "
             f"{result['updated_classes']} классов, "
-            f"{result['updated_relations']} отношений"
+            f"{result['updated_relations']} отношений",
         )
         if result["warnings"]:
             for w in result["warnings"]:
                 console.print(f"[yellow]⚠️ {w}[/yellow]")
     except ValueError as e:
-        console.print(f"[bold red]❌ Ошибка валидации:[/bold red]\n{str(e)}")
+        console.print(f"[bold red]❌ Ошибка валидации:[/bold red]\n{e!s}")
     except Exception as e:
         console.print(f"[bold red]✖ {e}[/bold red]")
     finally:

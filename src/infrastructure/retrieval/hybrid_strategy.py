@@ -1,5 +1,5 @@
 import logging
-from typing import List
+
 from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 from src.domain.models.search import RetrievalResult
 
@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class HybridStrategy(IRetrievalStrategy):
-    def __init__(self, strategies: List[IRetrievalStrategy]):
+    def __init__(self, strategies: list[IRetrievalStrategy]):
         self._strategies = strategies
 
     @property
@@ -15,7 +15,10 @@ class HybridStrategy(IRetrievalStrategy):
         return f"hybrid({'+'.join(s.name for s in self._strategies)})"
 
     async def retrieve(
-        self, query: str, query_embedding: List[float], top_k: int = 10
+        self,
+        query: str,
+        query_embedding: list[float],
+        top_k: int = 10,
     ) -> RetrievalResult:
         merged = RetrievalResult(metadata={"strategy": self.name, "sub_strategies": []})
         seen_chunks, seen_triples = set(), set()
@@ -33,7 +36,7 @@ class HybridStrategy(IRetrievalStrategy):
                     seen_triples.add(key)
             merged.communities.extend(result.communities)
             merged.metadata["sub_strategies"].append(
-                {"name": strategy.name, "chunks": len(result.chunks)}
+                {"name": strategy.name, "chunks": len(result.chunks)},
             )
 
         merged.chunks.sort(key=lambda c: c.score, reverse=True)

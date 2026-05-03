@@ -1,6 +1,6 @@
 
 # 🧠 Дипломный проект Ontology Graph RAG
-Система анализа документо на базе графа знаний (Neo4j) и локальных LLM (Ollama). 
+Система анализа документо на базе графа знаний (Neo4j) и локальных LLM (Ollama).
 Проект позволяет извлекать сущности и связи из PDF-документов, строить граф знаний, находить в нем сообщества  и отвечать на вопросы с точным цитированием источников.
 
 ## 🛠 Установка и настройка
@@ -56,7 +56,7 @@ uv sync
    ```
 8. **Полная очистка neo4j**
 ```bash
- uv run main.py drop-db 
+ uv run main.py drop-db
  ```
 ---
 
@@ -66,6 +66,10 @@ uv sync
 
 ```bash
 uv run fastapi dev src/presentation/api/main.py --host 0.0.0.0 --port 8000
+```
+либо
+```bash
+uv run uvicorn src.presentation.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 * **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)

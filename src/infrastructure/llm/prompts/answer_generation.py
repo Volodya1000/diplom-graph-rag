@@ -29,5 +29,5 @@ def get_answer_generation_prompt(
                 "human",
                 ("=== КОНТЕКСТ ===\n{context}\n\n=== ВОПРОС ===\n{question}\n\nОтвет:"),
             ),
-        ]
+        ],
     )

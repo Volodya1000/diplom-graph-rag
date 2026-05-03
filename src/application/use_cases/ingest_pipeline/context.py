@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Set, Optional
 
-from src.domain.models.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import ChunkNode, DocumentNode
 
 
 @dataclass
@@ -14,11 +13,11 @@ class IngestContext:
     skip_synonyms: bool
 
     # Заполняются в процессе:
-    document: Optional[DocumentNode] = None
-    domain_chunks: List[ChunkNode] = field(default_factory=list)
+    document: DocumentNode | None = None
+    domain_chunks: list[ChunkNode] = field(default_factory=list)
 
     # Статистика и кеш:
-    saved_instance_ids: Set[str] = field(default_factory=set)
+    saved_instance_ids: set[str] = field(default_factory=set)
     total_entities: int = 0
     total_triples: int = 0
 
@@ -33,4 +32,3 @@ class IIngestStep(ABC):
     @abstractmethod
     async def execute(self, ctx: IngestContext) -> None:
         """Выполняет один шаг пайплайна, модифицируя IngestContext."""
-        pass

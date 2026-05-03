@@ -1,35 +1,40 @@
-"""
-Integration: ExportOntologyUseCase + реальный репозиторий.
-"""
+"""Integration: ExportOntologyUseCase + реальный репозиторий."""
+
+from pathlib import Path
 
 import pytest
-from pathlib import Path
+
 from src.application.use_cases.export_ontology import ExportOntologyUseCase
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
-
 
 pytestmark = pytest.mark.integration
 
 
 class TestExportOntologyIntegration:
     async def test_export_creates_valid_file_with_real_data(
-        self, schema_repo, tmp_path: Path
+        self,
+        schema_repo,
+        tmp_path: Path,
     ):
         await schema_repo.ensure_indexes()
         await schema_repo.save_tbox_classes(
             [
                 SchemaClass(
-                    name="Person", status=SchemaStatus.CORE, description="Люди"
+                    name="Person",
+                    status=SchemaStatus.CORE,
+                    description="Люди",
                 ),
                 SchemaClass(
-                    name="Employee", status=SchemaStatus.DRAFT, parent="Person"
+                    name="Employee",
+                    status=SchemaStatus.DRAFT,
+                    parent="Person",
                 ),
                 SchemaClass(
                     name="Organization",
                     status=SchemaStatus.CORE,
                     description="Организации",
                 ),
-            ]
+            ],
         )
         await schema_repo.save_schema_relations(
             [
@@ -40,7 +45,7 @@ class TestExportOntologyIntegration:
                     status=SchemaStatus.CORE,
                     description="Работает в организации",
                 ),
-            ]
+            ],
         )
 
         use_case = ExportOntologyUseCase(schema_repo)

@@ -1,4 +1,3 @@
-from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -9,9 +8,9 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     model: str = "graphrag-hybrid"
-    messages: List[ChatMessage]
-    temperature: Optional[float] = 0.7
-    top_k: Optional[int] = 10
+    messages: list[ChatMessage]
+    temperature: float | None = 0.7
+    top_k: int | None = 10
 
 
 class ChatChoice(BaseModel):
@@ -31,7 +30,7 @@ class ChatCompletionResponse(BaseModel):
     object: str = "chat.completion"
     created: int
     model: str
-    choices: List[ChatChoice]
+    choices: list[ChatChoice]
     usage: Usage
-    sources: List[dict] = []
+    sources: list[dict] = []
     context_stats: dict = {}

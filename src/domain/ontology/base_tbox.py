@@ -1,9 +1,6 @@
-"""
-Базовый T-Box — ядро онтологии.
+"""Базовый T-Box — ядро онтологии."""
 
-"""
-
-from src.domain.ontology.schema import SchemaStatus, SchemaClass
+from src.domain.ontology.schema import SchemaClass, SchemaStatus
 
 BASE_TBOX_CLASSES: list[SchemaClass] = [
     # ---- Верхний уровень ----

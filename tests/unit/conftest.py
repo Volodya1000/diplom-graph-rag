@@ -5,6 +5,7 @@
 """
 
 import pytest
+
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
 

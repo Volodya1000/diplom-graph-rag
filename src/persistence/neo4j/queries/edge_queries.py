@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
+
 from .base import Neo4jQuery
 
 
@@ -21,11 +22,11 @@ class SaveEdgeQuery(Neo4jQuery[Any]):
             MERGE (source)-[:{self.relation_type}]->(target)
         """
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self) -> dict[str, Any]:
         return {
             "source_id": self.source_id,
             "target_id": self.target_id,
         }
 
-    def map_record(self, record: Dict[str, Any]) -> Any:
+    def map_record(self, record: dict[str, Any]) -> Any:
         return None

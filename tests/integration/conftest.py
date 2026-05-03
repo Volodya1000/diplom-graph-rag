@@ -6,7 +6,7 @@ warnings.filterwarnings(
     "ignore",
     category=DeprecationWarning,
     module=r"testcontainers\.neo4j",
-    append=False
+    append=False,
 )
 
 # Фильтр 2: точное сообщение про wait_for_logs (самое актуальное сейчас)
@@ -14,7 +14,7 @@ warnings.filterwarnings(
     "ignore",
     message="The wait_for_logs function with string or callable predicates is deprecated",
     category=DeprecationWarning,
-    append=False
+    append=False,
 )
 
 # Фильтр 3: точное сообщение про декоратор (на случай, если оно ещё где-то всплывёт)
@@ -22,22 +22,25 @@ warnings.filterwarnings(
     "ignore",
     message="The @wait_container_is_ready decorator is deprecated",
     category=DeprecationWarning,
-    append=False
+    append=False,
 )
 
 # Теперь уже безопасно импортировать всё остальное
+from collections.abc import AsyncGenerator
+
 import pytest
 import pytest_asyncio
-from testcontainers.neo4j import Neo4jContainer
 from pydantic import SecretStr
-from typing import AsyncGenerator
+from testcontainers.neo4j import Neo4jContainer
 
 from src.config.neo4j_settings import Neo4jSettings
-from src.persistence.neo4j.session_manager import Neo4jSessionManager
-from src.persistence.neo4j.neo4j_schema_repository import Neo4jSchemaRepository
 from src.persistence.neo4j.neo4j_document_repository import Neo4jDocumentRepository
-from src.persistence.neo4j.neo4j_instance_repository import Neo4jInstanceRepository
 from src.persistence.neo4j.neo4j_edge_repository import Neo4jEdgeRepository
+from src.persistence.neo4j.neo4j_instance_repository import Neo4jInstanceRepository
+from src.persistence.neo4j.neo4j_schema_repository import Neo4jSchemaRepository
+from src.persistence.neo4j.session_manager import Neo4jSessionManager
+from src.config.llm_settings import LLMSettings
+from src.config.ollama_settings import OllamaSettings
 
 
 # ─── контейнер (один на сессию) ───
@@ -100,3 +103,15 @@ def instance_repo(session_manager) -> Neo4jInstanceRepository:
 @pytest.fixture
 def edge_repo(session_manager) -> Neo4jEdgeRepository:
     return Neo4jEdgeRepository(session_manager)
+
+
+@pytest.fixture(scope="session")
+def llm_settings() -> LLMSettings:
+    """Общие настройки Ollama для всех интеграционных тестов."""
+    return OllamaSettings(
+        model_name="gpt-oss:120b-cloud",
+        temperature=0.1,
+        max_tokens=4096,
+        is_cloud=True,
+        local_url="http://localhost:11434",
+    )

@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "torch",
     "dishka>=1.9.1",
     "docling>=2.80.0",
     "easyocr>=1.7.2",
@@ -24,11 +25,14 @@ dependencies = [
     "transformers>=4.57.6",
     "typer>=0.21.2",
     "uvicorn>=0.42.0",
+    "langchain-openai>=1.2.1",
 ]
 
 [dependency-groups]
 dev = [
     "git-filter-repo>=2.47.0",
+    "lizard>=1.22.0",
+    "pre-commit>=4.6.0",
     "pylint>=4.0.5",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
@@ -37,13 +41,6 @@ dev = [
     "ty>=0.0.23",
 ]
 
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -58,4 +55,98 @@ pythonpath = ["."]
 "main.py" = ["E402"]
 "src/presentation/cli/*.py" = ["E402"]
 "tests/integration/conftest.py" = ["E402"]
+"tests/**/*.py" =[
+    "S101",    # Разрешаем assert в тестах
+    "SLF001",  # Разрешаем обращаться к приватным методам в тестах (например, _is_bad_entity)
+]
+"src/presentation/**/*.py" =["B008"]
 
+[tool.pylint]
+source-roots = ["src"]
+
+[tool.pylint.main]
+ignore-paths =[
+]
+fail-under = 9
+
+[tool.pylint.design]
+max-attributes = 9
+
+max-line-length = 120
+py-version = "3.12.1"
+
+[tool.pylint."messages control"]
+disable =[
+    "too-many-ancestors",
+    "too-few-public-methods",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "unsubscriptable-object",
+    "unnecessary-ellipsis",
+]
+
+[tool.bandit]
+exclude_dirs =[
+    ".venv",
+]
+
+skips = []
+tests = []
+
+[tool.ruff]
+exclude =[
+    ".venv",
+]
+line-length = 120
+force-exclude = true
+#
+#[tool.ruff.lint]
+#select = ["ALL"]
+#ignore =[
+#    # datetimez
+#    "DTZ",
+#    # docstring
+#    "D100",
+#    "D101",
+#    "D102",
+#    "D103",
+#    "D104",
+#    "D106",
+#    "D107",
+#    "D202",
+#    "D212",
+#    "D203", # Disabled in favor of D211 to require no empty line between class and docstring
+#    # type annotation
+#    "ANN001",
+#    "ANN002",
+#    "ANN003",
+#    "ANN201",
+#    "ANN202",
+#    "ANN204",
+#    # cyrillic
+#    "RUF001",
+#    "RUF002",
+#    "RUF003",
+#    #fast api
+#    "FAST002",
+#
+#    # --- НОВЫЕ ИГНОРЫ (чтобы убрать визуальный шум) ---
+#    "INP001",  # Разрешаем папки без __init__.py (Python 3.3+ это поддерживает)
+#    "G004",    # Разрешаем использовать f-строки в logger.info(f"...")
+#    "FBT",     # Отключаем ругань на boolean-аргументы (def foo(flag: bool = True))
+#    "PLR2004", # Разрешаем "магические числа" (например, if len(x) < 2)
+#    "TRY003",  # Разрешаем длинные тексты ошибок в raise ValueError("Длинный текст")
+#    "EM101",   # Разрешаем строки в исключениях
+#    "EM102",   # Разрешаем f-строки в исключениях
+#    "PLC0415", # Разрешаем локальные импорты внутри функций (нужно для CLI)
+#    "ARG002",  # Разрешаем неиспользуемые аргументы в методах (часто нужно в интерфейсах)
+#    "BLE001",  # Разрешаем ловить базовый Exception (except Exception as e:)
+#
+#    "D205", # docstring
+#    "D105"
+#]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+docstring-quotes = "double"

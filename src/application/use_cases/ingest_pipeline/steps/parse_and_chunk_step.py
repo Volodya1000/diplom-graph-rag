@@ -1,7 +1,8 @@
 import logging
 import time
+
 from src.application.use_cases.ingest_pipeline.context import IIngestStep, IngestContext
-from src.domain.models.nodes import DocumentNode, ChunkNode
+from src.domain.models.nodes import ChunkNode, DocumentNode
 from src.infrastructure.docling.doc_processor import DocProcessor
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,5 @@ class ParseAndChunkStep(IIngestStep):
         ]
 
         logger.info(
-            f"✂️ Parse + chunk: {ctx.total_chunks} chunks "
-            f"({time.monotonic() - t_parse:.1f}s)"
+            f"✂️ Parse + chunk: {ctx.total_chunks} chunks ({time.monotonic() - t_parse:.1f}s)",
         )

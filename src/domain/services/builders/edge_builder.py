@@ -3,17 +3,17 @@
 Заменяют логику, которая раньше была в псевдо-агрегатах.
 """
 
-from typing import List
-from src.domain.models.edges import GraphRelationType, GraphEdge
-from src.domain.models.nodes import DocumentNode, ChunkNode, InstanceNode
+from src.domain.models.edges import GraphEdge, GraphRelationType
+from src.domain.models.nodes import ChunkNode, DocumentNode, InstanceNode
 
 
 class GraphEdgeBuilder:
     @staticmethod
     def build_document_edges(
-        document: DocumentNode, chunks: List[ChunkNode]
-    ) -> List[GraphEdge]:
-        edges: List[GraphEdge] = []
+        document: DocumentNode,
+        chunks: list[ChunkNode],
+    ) -> list[GraphEdge]:
+        edges: list[GraphEdge] = []
 
         for chunk in chunks:
             edges.append(
@@ -21,7 +21,7 @@ class GraphEdgeBuilder:
                     relation_type=GraphRelationType.HAS_CHUNK,
                     source_id=document.doc_id,
                     target_id=chunk.chunk_id,
-                )
+                ),
             )
 
         for i in range(len(chunks) - 1):
@@ -30,19 +30,19 @@ class GraphEdgeBuilder:
                     relation_type=GraphRelationType.NEXT_CHUNK,
                     source_id=chunks[i].chunk_id,
                     target_id=chunks[i + 1].chunk_id,
-                )
+                ),
             )
             edges.append(
                 GraphEdge(
                     relation_type=GraphRelationType.PREV_CHUNK,
                     source_id=chunks[i + 1].chunk_id,
                     target_id=chunks[i].chunk_id,
-                )
+                ),
             )
         return edges
 
     @staticmethod
-    def build_instance_edges(instance: InstanceNode) -> List[GraphEdge]:
+    def build_instance_edges(instance: InstanceNode) -> list[GraphEdge]:
         return [
             GraphEdge(
                 relation_type=GraphRelationType.INSTANCE_OF,

@@ -1,26 +1,25 @@
 from dishka import Provider, Scope, provide
-from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+
+from src.application.services.context_builder import ContextBuilder
+from src.application.services.retrieval_registry import RetrievalStrategyRegistry
+from src.application.use_cases.answer_question import AnswerQuestionUseCase
+from src.application.use_cases.build_communities import BuildCommunitiesUseCase
+from src.config.rag_settings import RAGSettings
+from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
+from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
-from src.domain.interfaces.services.answer_generator import IAnswerGenerator
-from src.domain.interfaces.repositories.instance_repository import IInstanceRepository
-from src.persistence.neo4j.session_manager import Neo4jSessionManager
-from src.infrastructure.llm.llm_factory import ChatOllamaFactory
+from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.models.search import SearchMode
 from src.infrastructure.llm.clients.llm_answer_generator import OllamaAnswerGenerator
-from src.infrastructure.retrieval.vector_search_strategy import VectorSearchStrategy
-from src.infrastructure.retrieval.ppr_strategy import PPRStrategy
+from src.infrastructure.llm.llm_factory import ChatModelFactory  # новая фабрика
+from src.infrastructure.neo4j_gds.gds_analytics_service import Neo4jGDSAnalyticsService
 from src.infrastructure.retrieval.community_strategy import CommunityStrategy
 from src.infrastructure.retrieval.hybrid_strategy import HybridStrategy
-from src.infrastructure.neo4j_gds.gds_analytics_service import Neo4jGDSAnalyticsService
-from src.application.services.retrieval_registry import RetrievalStrategyRegistry
-from src.application.services.context_builder import ContextBuilder
-from src.application.use_cases.answer_question import AnswerQuestionUseCase
-from src.application.use_cases.build_communities import BuildCommunitiesUseCase
-
-# Исправление F821 и missing args
-from src.domain.models.search import SearchMode
-from src.config.rag_settings import RAGSettings
+from src.infrastructure.retrieval.ppr_strategy import PPRStrategy
+from src.infrastructure.retrieval.vector_search_strategy import VectorSearchStrategy
+from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
 
 class RAGProvider(Provider):
@@ -29,12 +28,14 @@ class RAGProvider(Provider):
         return Neo4jGDSAnalyticsService(sm)
 
     @provide(scope=Scope.APP)
-    def provide_generator(self, factory: ChatOllamaFactory) -> IAnswerGenerator:
+    def provide_generator(self, factory: ChatModelFactory) -> IAnswerGenerator:
         return OllamaAnswerGenerator(factory)
 
     @provide(scope=Scope.APP)
     def provide_vector_strategy(
-        self, sm: Neo4jSessionManager, instance_repo: IInstanceRepository
+        self,
+        sm: Neo4jSessionManager,
+        instance_repo: IInstanceRepository,
     ) -> VectorSearchStrategy:
         return VectorSearchStrategy(sm, instance_repo)
 

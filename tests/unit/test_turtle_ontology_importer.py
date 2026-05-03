@@ -1,10 +1,9 @@
-"""
-Unit-тесты: парсинг Turtle → наши модели (без БД).
-"""
+"""Unit-тесты: парсинг Turtle → наши модели (без БД)."""
 
 import pytest
-from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
+
 from src.domain.ontology.schema import SchemaStatus
+from src.domain.ontology.turtle_ontology_importer import TurtleOntologyImporter
 
 pytestmark = pytest.mark.unit
 

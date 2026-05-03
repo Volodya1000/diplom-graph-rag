@@ -1,10 +1,9 @@
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class SchemaStatus(str, Enum):
+class SchemaStatus(StrEnum):
     CORE = "core"
     DRAFT = "draft"
 
@@ -13,7 +12,7 @@ class SchemaClass(BaseModel):
     name: str
     status: SchemaStatus = SchemaStatus.DRAFT
     description: str = ""
-    parent: Optional[str] = None
+    parent: str | None = None
 
 
 class SchemaRelation(BaseModel):

@@ -1,10 +1,10 @@
 import logging
-from typing import List
-from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
+
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
 from src.domain.interfaces.services.graph_embedding_service import IEmbeddingService
+from src.domain.interfaces.services.retrieval_strategy import IRetrievalStrategy
 from src.domain.models.search import RetrievalResult, RetrievedCommunity
 from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
@@ -27,7 +27,10 @@ class CommunityStrategy(IRetrievalStrategy):
         return "community_global"
 
     async def retrieve(
-        self, query: str, query_embedding: List[float], top_k: int = 5
+        self,
+        query: str,
+        query_embedding: list[float],
+        top_k: int = 5,
     ) -> RetrievalResult:
         communities = await self._analytics.get_communities()
         if not communities:
@@ -38,10 +41,8 @@ class CommunityStrategy(IRetrievalStrategy):
             if not comm.summary:
                 continue
             summary_emb = await self._embedder.embed_text(comm.summary)
-            sim = sum(x * y for x, y in zip(query_embedding, summary_emb)) / (
-                (sum(x**2 for x in query_embedding) ** 0.5)
-                * (sum(x**2 for x in summary_emb) ** 0.5)
-                or 1
+            sim = sum(x * y for x, y in zip(query_embedding, summary_emb, strict=False)) / (
+                (sum(x**2 for x in query_embedding) ** 0.5) * (sum(x**2 for x in summary_emb) ** 0.5) or 1
             )
             scored.append(
                 RetrievedCommunity(
@@ -49,7 +50,7 @@ class CommunityStrategy(IRetrievalStrategy):
                     summary=comm.summary,
                     key_entities=comm.key_entities,
                     relevance_score=sim,
-                )
+                ),
             )
 
         scored.sort(key=lambda c: c.relevance_score, reverse=True)

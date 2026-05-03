@@ -9,6 +9,7 @@ Unit: EntityRegistry — кросс-чанковый кеш сущностей.
 """
 
 import pytest
+
 from src.application.services.entity_resolution_service import EntityRegistry
 from src.domain.models.nodes import InstanceNode
 

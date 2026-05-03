@@ -1,9 +1,9 @@
-"""
-Integration: полный цикл импорта TTL → валидация → сохранение в Neo4j.
-"""
+"""Integration: полный цикл импорта TTL → валидация → сохранение в Neo4j."""
+
+from pathlib import Path
 
 import pytest
-from pathlib import Path
+
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
@@ -17,7 +17,7 @@ class TestUpdateOntologyUseCase:
             [
                 SchemaClass(name="Person", status=SchemaStatus.CORE),
                 SchemaClass(name="Organization", status=SchemaStatus.CORE),
-            ]
+            ],
         )
         await schema_repo.save_schema_relations(
             [
@@ -26,8 +26,8 @@ class TestUpdateOntologyUseCase:
                     relation_name="WORKS_AT",
                     target_class="Organization",
                     status=SchemaStatus.CORE,
-                )
-            ]
+                ),
+            ],
         )
 
         ttl_content = """@prefix : <http://example.org/gr_a3#> .
@@ -84,11 +84,13 @@ class TestUpdateOntologyUseCase:
         assert any(word in error_text for word in ["цикл", "cycle", "обнаружен цикл"])
 
     async def test_used_class_removal_gives_warning_but_allows(
-        self, schema_repo, tmp_path: Path
+        self,
+        schema_repo,
+        tmp_path: Path,
     ):
         # Создаём класс, который будем "удалять"
         await schema_repo.save_tbox_classes(
-            [SchemaClass(name="Unused", status=SchemaStatus.DRAFT)]
+            [SchemaClass(name="Unused", status=SchemaStatus.DRAFT)],
         )
 
         ttl_content = """@prefix : <http://example.org/gr_a3#> .

@@ -1,16 +1,14 @@
-"""
-Чистые функции маппинга: Neo4j record → Domain object.
-"""
+"""Чистые функции маппинга: Neo4j record → Domain object."""
 
-from typing import Dict, Any
+from typing import Any
 
 from neo4j.time import DateTime as Neo4jDateTime
 
-from src.domain.models.nodes import DocumentNode, ChunkNode, InstanceNode
+from src.domain.models.nodes import ChunkNode, DocumentNode, InstanceNode
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 
 
-def map_to_document(record: Dict[str, Any]) -> DocumentNode:
+def map_to_document(record: dict[str, Any]) -> DocumentNode:
     upload_date = record["upload_date"]
     if isinstance(upload_date, Neo4jDateTime):
         upload_date = upload_date.to_native()
@@ -21,7 +19,7 @@ def map_to_document(record: Dict[str, Any]) -> DocumentNode:
     )
 
 
-def map_to_chunk(record: Dict[str, Any]) -> ChunkNode:
+def map_to_chunk(record: dict[str, Any]) -> ChunkNode:
     return ChunkNode(
         chunk_id=record["chunk_id"],
         doc_id=record["doc_id"],
@@ -34,7 +32,7 @@ def map_to_chunk(record: Dict[str, Any]) -> ChunkNode:
     )
 
 
-def map_to_instance(record: Dict[str, Any]) -> InstanceNode:
+def map_to_instance(record: dict[str, Any]) -> InstanceNode:
     return InstanceNode(
         instance_id=record["instance_id"],
         name=record["name"],
@@ -44,7 +42,7 @@ def map_to_instance(record: Dict[str, Any]) -> InstanceNode:
     )
 
 
-def map_to_schema_class(record: Dict[str, Any]) -> SchemaClass:
+def map_to_schema_class(record: dict[str, Any]) -> SchemaClass:
     return SchemaClass(
         name=record["name"],
         status=record["status"],
@@ -53,7 +51,7 @@ def map_to_schema_class(record: Dict[str, Any]) -> SchemaClass:
     )
 
 
-def map_to_schema_relation(record: Dict[str, Any]) -> SchemaRelation:
+def map_to_schema_relation(record: dict[str, Any]) -> SchemaRelation:
     return SchemaRelation(
         source_class=record["source_class"],
         relation_name=record["relation_name"],
@@ -63,7 +61,7 @@ def map_to_schema_relation(record: Dict[str, Any]) -> SchemaRelation:
     )
 
 
-def map_to_triple_dict(record: Dict[str, Any]) -> dict:
+def map_to_triple_dict(record: dict[str, Any]) -> dict:
     return {
         "subject_name": record["subject_name"],
         "subject_type": record["subject_type"],

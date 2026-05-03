@@ -1,8 +1,7 @@
-"""
-Unit-тесты: все бизнес-правила валидации и merge.
-"""
+"""Unit-тесты: все бизнес-правила валидации и merge."""
 
 import pytest
+
 from src.domain.ontology.ontology_update_validator import (
     OntologyUpdateValidator,
 )
@@ -39,11 +38,7 @@ def current_relations():
 
 class TestMergeLogic:
     def test_new_class_added(self, validator, current_classes, current_relations):
-        proposed = current_classes + [
-            SchemaClass(
-                name="Department", status=SchemaStatus.DRAFT, parent="Organization"
-            )
-        ]
+        proposed = [*current_classes, SchemaClass(name="Department", status=SchemaStatus.DRAFT, parent="Organization")]
         result = validator.validate_merge(
             current_classes,
             current_relations,
@@ -56,11 +51,16 @@ class TestMergeLogic:
         assert "Department" in {c.name for c in result.merged_classes}
 
     def test_existing_class_description_updated(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
         proposed = [
             SchemaClass(
-                name="Person", status=SchemaStatus.DRAFT, description="Люди v2"
+                name="Person",
+                status=SchemaStatus.DRAFT,
+                description="Люди v2",
             ),
         ]
         result = validator.validate_merge(
@@ -76,10 +76,13 @@ class TestMergeLogic:
 
 class TestCycleDetection:
     def test_cycle_detected(self, validator, current_classes, current_relations):
-        proposed = current_classes + [
+        proposed = [
+            *current_classes,
             SchemaClass(name="Animal", status=SchemaStatus.DRAFT, parent="Person"),
             SchemaClass(
-                name="Person", status=SchemaStatus.DRAFT, parent="Animal"
+                name="Person",
+                status=SchemaStatus.DRAFT,
+                parent="Animal",
             ),  # цикл
         ]
         result = validator.validate_merge(
@@ -94,11 +97,17 @@ class TestCycleDetection:
         assert "Обнаружен цикл в иерархии классов" in " ".join(result.errors)
 
     def test_no_cycle_self_reference(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
-        proposed = current_classes + [
+        proposed = [
+            *current_classes,
             SchemaClass(
-                name="Manager", status=SchemaStatus.DRAFT, parent="Manager"
+                name="Manager",
+                status=SchemaStatus.DRAFT,
+                parent="Manager",
             ),  # сам на себя
         ]
         result = validator.validate_merge(
@@ -114,11 +123,17 @@ class TestCycleDetection:
 
 class TestIntegrity:
     def test_missing_parent_rejected(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
-        proposed = current_classes + [
+        proposed = [
+            *current_classes,
             SchemaClass(
-                name="Intern", status=SchemaStatus.DRAFT, parent="Student"
+                name="Intern",
+                status=SchemaStatus.DRAFT,
+                parent="Student",
             ),  # нет Student
         ]
         result = validator.validate_merge(
@@ -133,14 +148,18 @@ class TestIntegrity:
         assert "Student" in " ".join(result.errors)
 
     def test_relation_with_missing_class_rejected(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
-        proposed_rels = current_relations + [
+        proposed_rels = [
+            *current_relations,
             SchemaRelation(
                 source_class="Student",
                 relation_name="STUDIES_AT",
                 target_class="University",
-            )
+            ),
         ]
         result = validator.validate_merge(
             current_classes,
@@ -155,7 +174,10 @@ class TestIntegrity:
 
 class TestDeletionProtection:
     def test_used_class_not_deleted_warning(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
         result = validator.validate_merge(
             current_classes,
@@ -170,7 +192,10 @@ class TestDeletionProtection:
         assert "Organization" in warnings_text or "Employee" in warnings_text
 
     def test_unused_class_can_be_deleted_no_warning(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
         result = validator.validate_merge(
             current_classes,
@@ -185,11 +210,12 @@ class TestDeletionProtection:
 
 class TestNamingRules:
     def test_invalid_class_name_rejected(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
-        proposed = current_classes + [
-            SchemaClass(name="123Person", status=SchemaStatus.DRAFT),
-        ]
+        proposed = [*current_classes, SchemaClass(name="123Person", status=SchemaStatus.DRAFT)]
         result = validator.validate_merge(
             current_classes,
             current_relations,
@@ -202,14 +228,18 @@ class TestNamingRules:
         assert "123Person" in " ".join(result.errors)
 
     def test_invalid_relation_name_rejected(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
-        proposed_rels = current_relations + [
+        proposed_rels = [
+            *current_relations,
             SchemaRelation(
                 source_class="Person",
                 relation_name="works-at",  # не UPPER_SNAKE
                 target_class="Organization",
-            )
+            ),
         ]
         result = validator.validate_merge(
             current_classes,
@@ -225,19 +255,23 @@ class TestNamingRules:
 
 class TestSelfReferenceAllowed:
     def test_self_referencing_relation_allowed_in_schema(
-        self, validator, current_classes, current_relations
+        self,
+        validator,
+        current_classes,
+        current_relations,
     ):
         """
         На уровне T-Box (схемы) самоссылки разрешены.
         Например, Person -> KNOWS -> Person или Organization -> PART_OF -> Organization.
         """
-        proposed_rels = current_relations + [
+        proposed_rels = [
+            *current_relations,
             SchemaRelation(
                 source_class="Person",
                 relation_name="KNOWS",
                 target_class="Person",
                 status=SchemaStatus.DRAFT,
-            )
+            ),
         ]
 
         result = validator.validate_merge(
@@ -254,7 +288,8 @@ class TestSelfReferenceAllowed:
 
         # 2. Отношение должно присутствовать в итоговом списке
         knows_rel = next(
-            (r for r in result.merged_relations if r.relation_name == "KNOWS"), None
+            (r for r in result.merged_relations if r.relation_name == "KNOWS"),
+            None,
         )
         assert knows_rel is not None
         assert knows_rel.source_class == "Person"

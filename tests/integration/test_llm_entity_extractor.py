@@ -3,44 +3,38 @@ Integration: Проверка работы реальной LLM (Ollama) на и
 согласно заданной онтологии.
 """
 
-import pytest
 import logging
 
-from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
-from src.infrastructure.llm.llm_factory import ChatOllamaFactory
-from src.config.ollama_settings import OllamaSettings
+import pytest
+
 from src.config.extraction_settings import ExtractionSettings
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
+from src.infrastructure.llm.clients.llm_entity_extractor import OllamaClient
+
+from src.infrastructure.llm.llm_factory import ChatModelFactory
 
 pytestmark = pytest.mark.integration
 logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def real_ollama_extractor():
-    settings = OllamaSettings(
-        model_name="qwen3.5:9b",
-        temperature=0.1,
-        num_ctx=4096,
-        is_cloud=False,
-        local_url="http://localhost:11434",
-    )
+def real_ollama_extractor(llm_settings):
     ext_settings = ExtractionSettings(
         max_triples_per_chunk=15,
         min_entity_name_chars=2,
         max_entity_name_words=5,
     )
-    factory = ChatOllamaFactory(settings)
+    # Используем готовую фикстуру ollama_settings
+    factory = ChatModelFactory(llm_settings)
     return OllamaClient(factory, ext_settings)
 
 
 class TestLLMEntityExtractor:
     async def test_extracts_expected_entities_and_triples_based_on_tbox(
-        self, real_ollama_extractor
+        self,
+        real_ollama_extractor,
     ):
-        """
-        Тестируем, что LLM корректно извлекает сущности и строго следует T-Box (схеме графа).
-        """
+        """Тестируем, что LLM корректно извлекает сущности и строго следует T-Box (схеме графа)."""
 
         # 1. Задаем строгую схему онтологии для теста
         tbox_classes = [
@@ -84,35 +78,23 @@ class TestLLMEntityExtractor:
             logger.info(f"Извлеченные сущности: {entities}")
 
             # Ожидаем, что LLM найдет Алексея, Яндекс и Москву
-            assert any("алексей" in k for k in entities.keys()), (
-                "Сущность 'Алексей Смирнов' не найдена"
-            )
-            assert any("яндекс" in k for k in entities.keys()), (
-                "Сущность 'Яндекс' не найдена"
-            )
-            assert any("москв" in k for k in entities.keys()), (
-                "Сущность 'Москва' не найдена"
-            )
+            assert any("алексей" in k for k in entities), "Сущность 'Алексей Смирнов' не найдена"
+            assert any("яндекс" in k for k in entities), "Сущность 'Яндекс' не найдена"
+            assert any("москв" in k for k in entities), "Сущность 'Москва' не найдена"
 
             # Проверяем корректность присвоенных классов (типов)
             for name, e_type in entities.items():
                 if "алексей" in name:
-                    assert e_type == "Person", (
-                        f"Ожидался тип Person для {name}, получен {e_type}"
-                    )
+                    assert e_type == "Person", f"Ожидался тип Person для {name}, получен {e_type}"
                 elif "яндекс" in name:
-                    assert e_type == "Organization", (
-                        f"Ожидался тип Organization для {name}, получен {e_type}"
-                    )
+                    assert e_type == "Organization", f"Ожидался тип Organization для {name}, получен {e_type}"
                 elif "москв" in name:
-                    assert e_type == "Location", (
-                        f"Ожидался тип Location для {name}, получен {e_type}"
-                    )
+                    assert e_type == "Location", f"Ожидался тип Location для {name}, получен {e_type}"
 
             # 5. Проверки извлеченных триплетов (связей)
             triples = result.triples
             logger.info(
-                f"Извлеченные триплеты: {[(t.subject, t.predicate, t.object) for t in triples]}"
+                f"Извлеченные триплеты: {[(t.subject, t.predicate, t.object) for t in triples]}",
             )
 
             assert len(triples) >= 2, "Должно быть извлечено минимум 2 триплета"
@@ -125,14 +107,12 @@ class TestLLMEntityExtractor:
                 obj = t.object.lower()
 
                 # Проверяем связь WORKS_AT
-                if t.predicate == "WORKS_AT":
-                    if "алексей" in subj and "яндекс" in obj:
-                        works_at_found = True
+                if t.predicate == "WORKS_AT" and "алексей" in subj and "яндекс" in obj:
+                    works_at_found = True
 
                 # Проверяем связь LOCATED_IN
-                if t.predicate == "LOCATED_IN":
-                    if "яндекс" in subj and "москв" in obj:
-                        located_in_found = True
+                if t.predicate == "LOCATED_IN" and "яндекс" in subj and "москв" in obj:
+                    located_in_found = True
 
             assert works_at_found, "Связь WORKS_AT (Алексей -> Яндекс) не извлечена"
             assert located_in_found, "Связь LOCATED_IN (Яндекс -> Москва) не извлечена"

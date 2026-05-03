@@ -1,22 +1,26 @@
-from typing import List, Any, Optional
+from typing import Any
+
+from docling.chunking import HybridChunker
+from docling.datamodel.base_models import InputFormat
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from transformers import AutoTokenizer  # Добавьте этот импорт
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat
-from docling.chunking import HybridChunker
-
-from .pdf_pipeline_options_factory import build_pipeline_options
-from .text_cleaner import TextCleaner
-from .dtos import ChunkMetadata, ProcessedChunk
 from src.config.chunking_settings import ChunkingSettings
 from src.config.parsing_settings import ParsingSettings
 from src.utils.logging import get_logger
+
+from .dtos import ChunkMetadata, ProcessedChunk
+from .pdf_pipeline_options_factory import build_pipeline_options
+from .text_cleaner import TextCleaner
+
 # Убираем basicConfig, используем наш логгер
 logger = get_logger(__name__)
 
 
 class DocProcessor:
-    def __init__(self, chunking_settings: Optional[ChunkingSettings] = None, parsing_settings: Optional[ParsingSettings]=None) -> None:
+    def __init__(
+        self, chunking_settings: ChunkingSettings | None = None, parsing_settings: ParsingSettings | None = None
+    ) -> None:
         self.logger = logger  # Используем наш логгер
         self.chunking_settings = chunking_settings or ChunkingSettings()
         self.parsing_settings = parsing_settings or ParsingSettings()
@@ -25,7 +29,7 @@ class DocProcessor:
         self.logger.info(f"Loading tokenizer: {self.chunking_settings.tokenizer_model}")
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.chunking_settings.tokenizer_model,
-            use_fast=True
+            use_fast=True,
         )
 
         # 2. Сборка пайплайна Docling через Factory (из ParsingSettings)
@@ -35,50 +39,49 @@ class DocProcessor:
         # 3. Инициализация конвертера
         self.converter = DocumentConverter(
             format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-            }
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+            },
         )
 
-
-
     def parse_pdf(self, path: str):
-        """Парсит PDF в структуру Docling (Неизменная логика)"""
+        """Парсит PDF в структуру Docling (Неизменная логика)."""
         self.logger.info(f"Parsing PDF: {path}")
         result = self.converter.convert(path)
         return result.document
 
     def get_document_preview(self, doc, max_pages: int = 2) -> str:
-        """Быстрое превью документа"""
+        """Быстрое превью документа."""
         # Используем логику из вашего второго сниппета, она быстрее для превью
         preview_parts = []
         # Проверка на наличие текстов (в разных версиях docling структура может отличаться)
-        if hasattr(doc, 'texts'):
+        if hasattr(doc, "texts"):
             for item in doc.texts:
-                if item.prov and hasattr(item.prov[0], 'page_no') and item.prov[0].page_no <= max_pages:
+                if item.prov and hasattr(item.prov[0], "page_no") and item.prov[0].page_no <= max_pages:
                     clean_part = TextCleaner.clean(item.text)
                     if clean_part:
                         preview_parts.append(clean_part)
         else:
             # Fallback на markdown экспорт, если структура иная
             md_text = doc.export_to_markdown()
-            lines = md_text.split('\n')
+            lines = md_text.split("\n")
             return "\n".join(lines[:100])
 
         return "\n".join(preview_parts)
 
-    def _extract_chunk_metadata(self, docling_chunk: Any, chunk_index: int,
-                                override_filename: Optional[str] = None) -> ChunkMetadata:
+    def _extract_chunk_metadata(
+        self, docling_chunk: Any, chunk_index: int, override_filename: str | None = None
+    ) -> ChunkMetadata:
         meta = docling_chunk.meta
         headings = [TextCleaner.clean(h) for h in (meta.headings or []) if h]
 
         page_numbers = set()
         # Универсальный обход provenance
         for doc_item in meta.doc_items:
-            if hasattr(doc_item, 'prov') and doc_item.prov:
+            if hasattr(doc_item, "prov") and doc_item.prov:
                 # Обработка списка или одиночного объекта
                 provs = doc_item.prov if isinstance(doc_item.prov, list) else [doc_item.prov]
                 for prov in provs:
-                    if hasattr(prov, 'page_no'):
+                    if hasattr(prov, "page_no"):
                         page_numbers.add(prov.page_no)
 
         start_page = min(page_numbers) if page_numbers else 0
@@ -92,8 +95,8 @@ class DocProcessor:
         else:
             doc_filename = None
 
-        if hasattr(meta, 'origin') and meta.origin:
-            doc_hash = str(meta.origin.binary_hash) if hasattr(meta.origin, 'binary_hash') else None
+        if hasattr(meta, "origin") and meta.origin:
+            doc_hash = str(meta.origin.binary_hash) if hasattr(meta.origin, "binary_hash") else None
 
         return ChunkMetadata(
             chunk_index=chunk_index,
@@ -101,9 +104,10 @@ class DocProcessor:
             start_page=start_page,
             end_page=end_page,
             doc_hash=doc_hash,
-            doc_filename=doc_filename
+            doc_filename=doc_filename,
         )
-    def chunk_document(self, doc, override_filename: Optional[str] = None) -> List[ProcessedChunk]:
+
+    def chunk_document(self, doc, override_filename: str | None = None) -> list[ProcessedChunk]:
         chunker = HybridChunker(
             tokenizer=self.tokenizer,
             merge_peers=self.chunking_settings.merge_peers,
@@ -135,10 +139,9 @@ class DocProcessor:
                 ProcessedChunk(
                     index=i,
                     enriched_text=cleaned_text,
-                    metadata=metadata
-                )
+                    metadata=metadata,
+                ),
             )
 
-        self.logger.info(
-            f"Document split into {len(processed_chunks)} chunks")
+        self.logger.info(f"Document split into {len(processed_chunks)} chunks")
         return processed_chunks
