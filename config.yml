@@ -18,10 +18,9 @@ llm:
   local_url: "http://localhost:11434"
 
 chunking:
-  tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2"
+  tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2" #ai-forever/FRIDA
+  max_tokens: 1000
   merge_peers: true
-  min_chunk_chars: 400 #
-  max_chunk_chars: 1200
   max_heading_chars: 80
 
 parsing:

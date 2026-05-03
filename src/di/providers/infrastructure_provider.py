@@ -2,13 +2,10 @@ from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, provide
 
-# ВСЕ импорты через src. - УБИРАЕМ config. без src
 from src.config.app_settings import AppSettings
-from src.config.chunking_settings import ChunkingSettings
 from src.config.extraction_settings import ExtractionSettings
-from src.config.llm_settings import LLMSettings  # ← через src.
+from src.config.llm_settings import LLMSettings
 from src.config.neo4j_settings import Neo4jSettings
-from src.config.parsing_settings import ParsingSettings
 from src.domain.interfaces.llm.llm_client import ILLMClient
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
 from src.domain.interfaces.repositories.edge_repository import IEdgeRepository
@@ -33,8 +30,6 @@ from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
 
 class InfrastructureProvider(Provider):
-    # --- Neo4j: один драйвер → четыре репозитория ---
-
     @provide(scope=Scope.APP)
     async def provide_session_manager(
         self,
@@ -72,8 +67,6 @@ class InfrastructureProvider(Provider):
     ) -> IEdgeRepository:
         return Neo4jEdgeRepository(sm)
 
-    # --- LLM: фабрика → клиенты ---
-    # ВАЖНО: Фабрика должна быть объявлена ПЕРВОЙ!
     @provide(scope=Scope.APP)
     def provide_llm_factory(self, settings: LLMSettings) -> ChatModelFactory:
         return ChatModelFactory(settings)
@@ -93,14 +86,10 @@ class InfrastructureProvider(Provider):
     ) -> ISynonymResolver:
         return OllamaSynonymResolver(factory)
 
-    # --- Embeddings ---
-
     @provide(scope=Scope.APP)
     def provide_embedder(self, config: AppSettings) -> IEmbeddingService:
         return SentenceTransformerService(config.embedding_model)
 
-    # --- Document processing ---
-
     @provide(scope=Scope.APP)
-    def provide_parser(self) -> DocProcessor:
-        return DocProcessor(ChunkingSettings(), ParsingSettings())
+    def provide_parser(self, config: AppSettings) -> DocProcessor:
+        return DocProcessor(config.chunking, config.parsing)

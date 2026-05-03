@@ -71,7 +71,7 @@ services:
               count: all
               capabilities: [ gpu ]
     volumes:
-      - ./models/gemma-2-9b-it:/model
+      - ./gemma-4-e4b:/model
     ports:
       - "8000:8000"
     ipc: host
@@ -79,8 +79,6 @@ services:
       /model
       --max-model-len 8192
       --gpu-memory-utilization 0.85
-      --enable-prefix-caching
-      --max-num-seqs 32
       --tensor-parallel-size 1
     restart: unless-stopped
 volumes:

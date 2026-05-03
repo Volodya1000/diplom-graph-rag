@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 class ChunkingSettings(BaseModel):
     tokenizer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    merge_peers: bool = True
-    min_chunk_chars: int = 400
-    max_chunk_chars: int = 1200
-    max_heading_chars: int = 80
+    max_tokens: int = 100  # Максимальный размер чанка (под размер контекста модели)
+    merge_peers: bool = True  # Разрешаем слияние соседних списков/абзацев
+    max_heading_chars: int = 10

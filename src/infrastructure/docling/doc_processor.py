@@ -3,7 +3,7 @@ from typing import Any
 from docling.chunking import HybridChunker
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from transformers import AutoTokenizer  # Добавьте этот импорт
+from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 
 from src.config.chunking_settings import ChunkingSettings
 from src.config.parsing_settings import ParsingSettings
@@ -13,23 +13,20 @@ from .dtos import ChunkMetadata, ProcessedChunk
 from .pdf_pipeline_options_factory import build_pipeline_options
 from .text_cleaner import TextCleaner
 
-# Убираем basicConfig, используем наш логгер
 logger = get_logger(__name__)
 
 
 class DocProcessor:
-    def __init__(
-        self, chunking_settings: ChunkingSettings | None = None, parsing_settings: ParsingSettings | None = None
-    ) -> None:
-        self.logger = logger  # Используем наш логгер
-        self.chunking_settings = chunking_settings or ChunkingSettings()
-        self.parsing_settings = parsing_settings or ParsingSettings()
+    def __init__(self, chunking_settings: ChunkingSettings, parsing_settings: ParsingSettings) -> None:
+        self.logger = logger
+        self.chunking_settings = chunking_settings
+        self.parsing_settings = parsing_settings
 
         # 1. Инициализация Токенайзера (из ChunkingSettings)
         self.logger.info(f"Loading tokenizer: {self.chunking_settings.tokenizer_model}")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.chunking_settings.tokenizer_model,
-            use_fast=True,
+        self.tokenizer = HuggingFaceTokenizer.from_pretrained(
+            model_name=self.chunking_settings.tokenizer_model,
+            max_tokens=self.chunking_settings.max_tokens,
         )
 
         # 2. Сборка пайплайна Docling через Factory (из ParsingSettings)
@@ -113,32 +110,22 @@ class DocProcessor:
             merge_peers=self.chunking_settings.merge_peers,
         )
 
-        chunk_iter = chunker.chunk(dl_doc=doc)
         processed_chunks = []
 
-        for i, docling_chunk in enumerate(chunk_iter, start=1):
-            raw_text = chunker.contextualize(chunk=docling_chunk)
-            cleaned_text = raw_text
+        # Docling сам отдаст уже нужные плотные блоки
+        for i, docling_chunk in enumerate(chunker.chunk(dl_doc=doc), start=1):
+            # contextualize() уже включает в себя добавление заголовков из метаданных в текст
+            enriched_text = chunker.contextualize(chunk=docling_chunk)
 
-            # Увеличенный порог: 50 символов вместо 15
-            if not cleaned_text or len(cleaned_text) < 50:
+            if not enriched_text or not enriched_text.strip():
                 continue
 
             metadata = self._extract_chunk_metadata(docling_chunk, i, override_filename)
 
-            # Обогащение: только первый заголовок, без полного пути
-            if metadata.headings:
-                # Берём только ПОСЛЕДНИЙ (самый конкретный) заголовок
-                heading = metadata.headings[-1] if metadata.headings else ""
-                if heading and len(heading) < 80:
-                    context_header = f"Документ: {heading}\n---\n"
-                    if not cleaned_text.startswith(context_header):
-                        cleaned_text = context_header + cleaned_text
-
             processed_chunks.append(
                 ProcessedChunk(
                     index=i,
-                    enriched_text=cleaned_text,
+                    enriched_text=enriched_text,
                     metadata=metadata,
                 ),
             )
