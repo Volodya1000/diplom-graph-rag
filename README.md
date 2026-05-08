@@ -76,7 +76,7 @@ uv run main.py import-ontology alpha_ontology.ttl
 **3. Экспорт онтологии:**
 
 ```bash
-uv run main.py export-ontology -o data/ontology/my_ontology.ttl
+uv run main.py export-ontology -o data/ontology/alpha_ontology.ttl
 ```
 <details>
 <summary><b>Показать дополнительные параметры (перезапись файла)</b></summary>

@@ -1,0 +1,289 @@
+@prefix : <http://example.org/gr_a3#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# ============================================
+# GR_A3 Ontology — T-Box (только схема)
+# ============================================
+
+<http://example.org/gr_a3> a owl:Ontology ;
+    rdfs:label "GR_A3 Knowledge Graph Ontology" ;
+    rdfs:comment "Экспортировано из проекта gr_a3, обновлено для риск-менеджмента" .
+
+# ============================================
+# КЛАССЫ (Classes)
+# ============================================
+
+:Address a owl:Class ;
+    rdfs:subClassOf :Location .
+
+:Company a owl:Class ;
+    rdfs:subClassOf :Organization .
+
+:Concept a owl:Class ;
+    rdfs:comment "Понятия: термины, абстракции" .
+
+:Risk a owl:Class ;
+    rdfs:subClassOf :Concept ;
+    rdfs:comment "Виды рисков (Кредитный, Операционный, Репутационный и т.д.)" .
+
+:Instrument a owl:Class ;
+    rdfs:subClassOf :Concept ;
+    rdfs:comment "Инструменты, меры и методы управления (Лимиты, Стресс-тестирование)" .
+
+:Date a owl:Class .
+
+:Document a owl:Class .
+
+:Event a owl:Class .
+
+:GovernmentOrg a owl:Class ;
+    rdfs:subClassOf :Organization .
+
+:LegalAct a owl:Class ;
+    rdfs:subClassOf :Document .
+
+:LegalEntity a owl:Class .
+
+:Location a owl:Class .
+
+:Organization a owl:Class ;
+    rdfs:subClassOf :LegalEntity .
+
+:Person a owl:Class .
+
+:PhysicalPerson a owl:Class ;
+    rdfs:subClassOf :Person .
+
+:Process a owl:Class .
+
+:Product a owl:Class .
+
+:Project a owl:Class .
+
+:Regulation a owl:Class ;
+    rdfs:subClassOf :Document .
+
+:Role a owl:Class .
+
+:Startup a owl:Class ;
+    rdfs:subClassOf :Company .
+
+:Subsidiary a owl:Class ;
+    rdfs:subClassOf :Company .
+
+:System a owl:Class ;
+    rdfs:comment "Система: организационная или ИТ-система" .
+
+:Technology a owl:Class ;
+    rdfs:subClassOf :Concept .
+
+:TimePeriod a owl:Class ;
+    rdfs:subClassOf :Date .
+
+:Bank a owl:Class ;
+    rdfs:subClassOf :Company .
+
+:BankAccount a owl:Class ;
+    rdfs:subClassOf :Product .
+
+:BankDeposit a owl:Class ;
+    rdfs:subClassOf :BankAccount .
+
+:CentralBank a owl:Class ;
+    rdfs:subClassOf :GovernmentOrg .
+
+:ConflictOfInterest a owl:Class ;
+    rdfs:subClassOf :Risk .
+
+:Department a owl:Class ;
+    rdfs:subClassOf :Organization .
+
+
+# ============================================
+# ОБЪЕКТНЫЕ СВОЙСТВА (Object Properties)
+# ============================================
+
+:ACQUIRED a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Company .
+
+:APPLIES_TO a owl:ObjectProperty ;
+    rdfs:domain :Document ;
+    rdfs:range :Organization, :Person .
+
+:BORN_ON a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Date .
+
+:CAUSED_BY a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Event .
+
+:CONTAINS a owl:ObjectProperty ;
+    rdfs:domain :Location ;
+    rdfs:range :Location .
+
+:CREATED a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Product .
+
+:DIED_ON a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Date .
+
+:EMPLOYS a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Person .
+
+:ENDS_ON a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Date .
+
+:FAMILY_RELATION a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person .
+
+:FOUNDED_ON a owl:ObjectProperty ;
+    rdfs:domain :Company ;
+    rdfs:range :Date .
+
+:GUARANTEES a owl:ObjectProperty ;
+    rdfs:domain :GovernmentOrg ;
+    rdfs:range :BankDeposit .
+
+:HAS_ACCOUNT a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Person ;
+    rdfs:range :BankAccount .
+
+:HAS_ROLE a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Role .
+
+:HEADQUARTERED_IN a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Address .
+
+:INVOLVES a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Person .
+
+:ISSUED_BY a owl:ObjectProperty ;
+    rdfs:domain :Document ;
+    rdfs:range :Organization .
+
+:KNOWS a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person .
+
+:LED_BY a owl:ObjectProperty ;
+    rdfs:domain :Project ;
+    rdfs:range :Person .
+
+:LOCATED_IN a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Person, :Product ;
+    rdfs:range :Location .
+
+:MANAGES a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Person ;
+    rdfs:range :Organization, :Process .
+
+:OCCURRED_AT a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Location .
+
+:OCCURRED_ON a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Date .
+
+:OWNS a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Person ;
+    rdfs:range :Organization, :Product .
+
+:PARTICIPATED_IN a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Event .
+
+:PART_OF a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Organization .
+
+:PRODUCED_BY a owl:ObjectProperty ;
+    rdfs:domain :Product ;
+    rdfs:range :Organization .
+
+:PRODUCES a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Product .
+
+:REGULATES a owl:ObjectProperty ;
+    rdfs:domain :CentralBank, :Document ;
+    rdfs:range :Bank, :Organization, :Process .
+
+:RELATED_TO a owl:ObjectProperty ;
+    rdfs:domain :Concept ;
+    rdfs:range :Concept .
+
+:RESIDES_AT a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Address .
+
+:STARTS_ON a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Date .
+
+:SUPERVISES a owl:ObjectProperty ;
+    rdfs:domain :Department ;
+    rdfs:range :Process .
+
+:VENUE a owl:ObjectProperty ;
+    rdfs:domain :Event ;
+    rdfs:range :Location .
+
+:WORKS_AT a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Organization .
+
+# ============================================
+# СЛОЖНЫЕ ОТНОШЕНИЯ (С множественным Domain/Range)
+# ============================================
+
+# Расширен domain для USES
+:USES a owl:ObjectProperty ;
+    rdfs:domain[
+        a owl:Class ;
+        owl:unionOf ( :Product :System :Process )
+    ] ;
+    rdfs:range :Concept ;
+    rdfs:comment "Продукт, Система или Процесс использует концепцию / технологию" .
+
+# Новое свойство: Снижает/Минимизирует риск
+:MITIGATES a owl:ObjectProperty ;
+    rdfs:domain[
+        a owl:Class ;
+        owl:unionOf ( :Process :Instrument :System :Department )
+    ] ;
+    rdfs:range :Risk ;
+    rdfs:comment "Процесс или Инструмент снижает / минимизирует / ограничивает Риск" .
+
+# Новое свойство: Осуществляет мониторинг
+:MONITORS a owl:ObjectProperty ;
+    rdfs:domain[
+        a owl:Class ;
+        owl:unionOf ( :Organization :Department :Person :System )
+    ] ;
+    rdfs:range[
+        a owl:Class ;
+        owl:unionOf ( :Process :Concept :Risk )
+    ] ;
+    rdfs:comment "Организация или подразделение осуществляет мониторинг риска или показателя" .
+
+# Новое свойство: Внедряет/Реализует
+:IMPLEMENTS a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range[
+        a owl:Class ;
+        owl:unionOf ( :Process :Instrument :System )
+    ] ;
+    rdfs:comment "Организация внедряет или реализует систему/процесс/инструмент" .

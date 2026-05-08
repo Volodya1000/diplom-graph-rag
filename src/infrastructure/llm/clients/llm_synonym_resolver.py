@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class _SynonymGroupParsed(BaseModel):
-    canonical_name: str
-    canonical_type: str = ""
-    aliases: list[str] = Field(default_factory=list)
-    reason: str = ""
+    canonical: str = Field(description="Каноническое (основное) имя сущности")
+    canonical_type: str = Field(default="", description="Тип сущности")
+    synonyms: list[str] = Field(default_factory=list, description="Список синонимов")
+    reason: str = Field(default="", description="Причина объединения")
 
 
 class _SynonymOutput(BaseModel):
@@ -64,7 +64,6 @@ class OllamaSynonymResolver(ISynonymResolver):
                 entity_lines.append(f"• {inst.name} [{inst.class_name}]")
             id_by_name.setdefault(inst.name.lower(), []).append(inst.instance_id)
 
-        # === УПРОЩЕНИЕ: with_structured_output ===
         structured_llm = self._llm.with_structured_output(
             _SynonymOutput,
             method="json_mode",
@@ -85,16 +84,16 @@ class OllamaSynonymResolver(ISynonymResolver):
 
             groups = []
             for g in parsed.groups:
-                if not g.canonical_name.strip() or not g.aliases:
+                if not g.canonical.strip() or not g.synonyms:
                     continue
                 all_ids = {
-                    iid for name in [g.canonical_name, *g.aliases] for iid in id_by_name.get(name.strip().lower(), [])
+                    iid for name in [g.canonical, *g.synonyms] for iid in id_by_name.get(name.strip().lower(), [])
                 }
                 groups.append(
                     SynonymGroup(
-                        canonical_name=g.canonical_name.strip(),
+                        canonical_name=g.canonical.strip(),
                         canonical_type=g.canonical_type,
-                        aliases=[a.strip() for a in g.aliases],
+                        aliases=[a.strip() for a in g.synonyms],
                         instance_ids=list(all_ids),
                         reason=g.reason,
                     ),
