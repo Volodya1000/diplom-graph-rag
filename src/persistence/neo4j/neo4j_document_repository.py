@@ -11,6 +11,7 @@ from .queries.document_queries import (
     SaveDocumentQuery,
     GetDocumentStatsQuery,
     GetAllDocumentsStatsQuery,
+    DeleteDocumentByNameQuery,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,3 +48,8 @@ class Neo4jDocumentRepository(Neo4jBaseRepository, IDocumentRepository):
     async def get_document_stats(self, doc_id: str) -> DocumentStats | None:
         results = await self._fetch_all(GetDocumentStatsQuery(doc_id=doc_id))
         return results[0] if results else None
+
+    async def delete_document_by_filename(self, filename: str) -> bool:
+        query = DeleteDocumentByNameQuery(filename=filename)
+        result = await self._fetch_all(query)
+        return len(result) > 0 and result[0] is True

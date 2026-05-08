@@ -186,3 +186,47 @@ class GetDocumentStatsQuery(Neo4jQuery[DocumentStats]):
 
     def map_record(self, record: dict[str, Any]) -> DocumentStats:
         return map_to_document_stats(record)
+
+
+@dataclass
+class DeleteDocumentByNameQuery(Neo4jQuery[bool]):
+    filename: str
+
+    def get_query(self) -> str:
+        return """
+            MATCH (d:Document {filename: $filename})
+
+            // 1. Собираем чанки удаляемого документа
+            OPTIONAL MATCH (d)-[:HAS_CHUNK]->(c:Chunk)
+            WITH d, collect(DISTINCT c) AS doc_chunks
+
+            // 2. Находим инстансы, привязанные к этим чанкам
+            OPTIONAL MATCH (i:Instance)-[:MENTIONED_IN]->(c_in) WHERE c_in IN doc_chunks
+            WITH d, doc_chunks, collect(DISTINCT i) AS instances,[ch IN doc_chunks | ch.chunk_id] AS chunk_ids
+
+            // 3. Удаляем ТРИПЛЕТЫ (связи между сущностями), которые были сгенерированы из удаляемых чанков.
+            // UNWIND (CASE ... [null]) позволяет безопасно пропустить блок, если список пуст
+            UNWIND (CASE instances WHEN [] THEN [null] ELSE instances END) AS inst_for_rel
+            OPTIONAL MATCH (inst_for_rel)-[rel]->() WHERE rel.chunk_id IN chunk_ids
+            DELETE rel
+
+            // 4. Выявляем изолированные сущности (те, которые не упоминаются в других документах)
+            WITH DISTINCT d, doc_chunks, instances
+            UNWIND (CASE instances WHEN [] THEN[null] ELSE instances END) AS i
+            OPTIONAL MATCH (i)-[:MENTIONED_IN]->(other_c:Chunk) WHERE NOT other_c IN doc_chunks
+            WITH d, doc_chunks, i, count(other_c) AS ext_mentions
+            WITH d, doc_chunks, collect(DISTINCT CASE WHEN i IS NOT NULL AND ext_mentions = 0 THEN i END) AS isolated_instances
+
+            // 5. Финальное удаление
+            FOREACH(iso IN isolated_instances | DETACH DELETE iso)
+            FOREACH(ch IN doc_chunks | DETACH DELETE ch)
+            DETACH DELETE d
+
+            RETURN true AS success
+        """
+
+    def get_params(self) -> dict[str, Any]:
+        return {"filename": self.filename}
+
+    def map_record(self, record: dict[str, Any]) -> bool:
+        return record.get("success", False)

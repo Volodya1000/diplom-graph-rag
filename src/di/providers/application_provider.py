@@ -27,6 +27,7 @@ from src.application.use_cases.ingest_pipeline.steps.post_process_step import (
 from src.application.use_cases.ingest_pipeline.steps.save_structure_step import (
     SaveDocumentStructureStep,
 )
+from src.application.use_cases.delete_document_use_case import DeleteDocumentUseCase
 from src.application.use_cases.seed_tbox import SeedTboxUseCase
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.config.app_settings import AppSettings
@@ -122,6 +123,14 @@ class ApplicationProvider(Provider):
         schema_repo: ISchemaRepository,
     ) -> UpdateOntologyUseCase:
         return UpdateOntologyUseCase(schema_repo)
+
+    @provide(scope=Scope.APP)
+    def provide_delete_document_use_case(
+        self,
+        doc_repo: IDocumentRepository,
+        file_storage: IFileStorageService,
+    ) -> DeleteDocumentUseCase:
+        return DeleteDocumentUseCase(doc_repo, file_storage)
 
     @provide(scope=Scope.APP)
     def provide_file_storage_service(self, config: AppSettings) -> IFileStorageService:

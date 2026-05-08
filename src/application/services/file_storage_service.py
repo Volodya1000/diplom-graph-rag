@@ -24,6 +24,15 @@ class LocalFileStorageService(IFileStorageService):
         await asyncio.to_thread(self._save_file_sync, file_path, file_stream)
         return file_path
 
+    def _delete_file_sync(self, file_path: Path) -> bool:
+        if file_path.exists():
+            file_path.unlink()
+        return True
+
+    async def delete_file(self, filename: str) -> bool:
+        file_path = self._upload_dir / filename
+        return await asyncio.to_thread(self._delete_file_sync, file_path)
+
     def get_download_url(self, filename: str) -> str:
         if not filename:
             return ""

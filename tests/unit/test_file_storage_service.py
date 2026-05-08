@@ -52,3 +52,20 @@ class TestLocalFileStorageService:
         # Проверяем содержимое
         with open(saved_path, "rb") as f:
             assert f.read() == file_content
+
+    @pytest.mark.asyncio
+    async def test_delete_file_removes_file(self, file_storage, tmp_path):
+        filename = "to_delete.txt"
+        file_path = tmp_path / filename
+        file_path.write_text("dummy")
+
+        result = await file_storage.delete_file(filename)
+
+        assert result is True
+        assert not file_path.exists()
+
+    @pytest.mark.asyncio
+    async def test_delete_file_missing_ok(self, file_storage):
+        result = await file_storage.delete_file("ghost.txt")
+        # Метод возвращает True, так как отсутствие файла считается успешным удалением
+        assert result is True
