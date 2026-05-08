@@ -6,7 +6,7 @@ neo4j:
   uri: "bolt://localhost:7687"
   user: "neo4j"
   # password берется из .env
-  embedding_dim: 384
+  embedding_dim: 1536
   vector_search_threshold: 0.70
 
 llm:

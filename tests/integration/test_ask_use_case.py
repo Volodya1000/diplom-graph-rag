@@ -2,43 +2,20 @@
 Integration: Проверка полного цикла сборки контекста и генерации ответа.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from src.application.services.context_builder import ContextBuilder
 from src.application.services.retrieval_registry import RetrievalStrategyRegistry
 from src.application.use_cases.answer_question import AnswerQuestionUseCase
-from src.config.rag_settings import RAGSettings
 from src.domain.models.nodes import ChunkNode, DocumentNode
 from src.domain.models.search import SearchMode
 from src.infrastructure.llm.clients.llm_answer_generator import OllamaAnswerGenerator
-
 from src.infrastructure.llm.llm_factory import ChatModelFactory
 from src.infrastructure.retrieval.vector_search_strategy import VectorSearchStrategy
 
 pytestmark = pytest.mark.integration
-
-
-@pytest.fixture
-def mock_embedder():
-    embedder = AsyncMock()
-    embedder.embed_text.return_value = [0.1] * 384
-    return embedder
-
-
-@pytest.fixture
-def mock_file_storage():
-    """Заглушка для генерации ссылок в тестах."""
-    storage = MagicMock()
-    storage.get_download_url.side_effect = lambda filename: f"http://test-api/uploads/{filename}"
-    return storage
-
-
-@pytest.fixture
-def real_ollama_generator(llm_settings):
-    factory = ChatModelFactory(llm_settings)
-    return OllamaAnswerGenerator(factory)
 
 
 class TestAskUseCase:
@@ -48,6 +25,7 @@ class TestAskUseCase:
         schema_repo,
         session_manager,
         instance_repo,
+        embedding_factory,
     ):
         await schema_repo.ensure_indexes()
 
@@ -61,7 +39,7 @@ class TestAskUseCase:
             text="Выручка компании выросла на 25%.",
             start_page=14,
             end_page=15,
-            embedding=[0.1] * 384,
+            embedding=embedding_factory(),
         )
         await doc_repo.save_chunk(chunk)
 
@@ -69,7 +47,7 @@ class TestAskUseCase:
 
         result = await strategy.retrieve(
             "Как выросла выручка?",
-            query_embedding=[0.1] * 384,
+            query_embedding=embedding_factory(),
         )
 
         assert len(result.chunks) == 1
@@ -78,7 +56,10 @@ class TestAskUseCase:
         assert c.start_page == 14
         assert c.end_page == 15
 
-    async def test_ollama_generates_answer_with_citations(self, real_ollama_generator):
+    async def test_ollama_generates_answer_with_citations(self, llm_settings):
+        factory = ChatModelFactory(llm_settings)
+        real_ollama_generator = OllamaAnswerGenerator(factory)
+
         context_text = (
             "=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ ИЗ ДОКУМЕНТОВ ===\n"
             "--- Фрагмент #1[Документ: Устав_Корпорации.pdf, Стр. 10-10] ---\n"
@@ -97,7 +78,6 @@ class TestAskUseCase:
 
             assert "5" in response or "пять" in response.lower()
             assert "90" in response or "девяносто" in response.lower()
-
             assert "[Документ: Устав_Корпорации.pdf" in response
             assert "[Документ: Регламент_Безопасности.docx" in response
             assert "Стр." in response
@@ -115,6 +95,8 @@ class TestAskUseCase:
         instance_repo,
         mock_embedder,
         mock_file_storage,
+        rag_settings,
+        embedding_factory,
     ):
         await schema_repo.ensure_indexes()
 
@@ -128,7 +110,7 @@ class TestAskUseCase:
             text="Операция на рассвете.",
             start_page=42,
             end_page=42,
-            embedding=[0.1] * 384,
+            embedding=embedding_factory(),
         )
         await doc_repo.save_chunk(chunk)
 
@@ -139,7 +121,7 @@ class TestAskUseCase:
         registry = RetrievalStrategyRegistry()
         registry.register(SearchMode.LOCAL, strategy)
 
-        builder = ContextBuilder(settings=RAGSettings())
+        builder = ContextBuilder(settings=rag_settings)
         use_case = AnswerQuestionUseCase(
             embedder=mock_embedder,
             registry=registry,

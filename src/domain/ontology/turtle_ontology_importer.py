@@ -1,4 +1,5 @@
 from rdflib import OWL, RDF, RDFS, Graph
+import urllib.parse
 
 from .schema import SchemaClass, SchemaRelation, SchemaStatus
 
@@ -18,7 +19,7 @@ class TurtleOntologyImporter:
 
         # Классы
         for subj in g.subjects(RDF.type, OWL.Class):
-            name = str(subj).split("#")[-1]
+            name = urllib.parse.urlparse(str(subj)).fragment or str(subj).split("/")[-1]
             comment = g.value(subj, RDFS.comment)
             parent = g.value(subj, RDFS.subClassOf)
             parent_name = str(parent).split("#")[-1] if parent else None

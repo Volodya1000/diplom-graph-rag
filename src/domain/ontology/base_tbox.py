@@ -10,8 +10,20 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         description="Люди: персоналии, должностные лица, авторы, персонажи",
     ),
     SchemaClass(
+        name="PhysicalPerson",
+        status=SchemaStatus.CORE,
+        parent="Person",
+        description="Физическое лицо",
+    ),
+    SchemaClass(
+        name="LegalEntity",
+        status=SchemaStatus.CORE,
+        description="Юридическое лицо: организация, компания, ведомство, учреждение",
+    ),
+    SchemaClass(
         name="Organization",
         status=SchemaStatus.CORE,
+        parent="LegalEntity",
         description="Организации: компании, учреждения, ведомства",
     ),
     SchemaClass(
@@ -30,6 +42,11 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         description="События: мероприятия, инциденты, встречи, действия",
     ),
     SchemaClass(
+        name="Process",
+        status=SchemaStatus.CORE,
+        description="Бизнес-процессы, процедуры, workflow",
+    ),
+    SchemaClass(
         name="Product",
         status=SchemaStatus.CORE,
         description="Продукты: изделия, объекты, еда, предметы, документы",
@@ -40,9 +57,9 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         description="Понятия: термины, методы, технологии, абстракции",
     ),
     SchemaClass(
-        name="Animal",
+        name="System",
         status=SchemaStatus.CORE,
-        description="Животные: реальные или персонажи-животные",
+        description="Система: организационная, информационная или IT-система",
     ),
     # ---- Подклассы ----
     SchemaClass(
@@ -58,10 +75,22 @@ BASE_TBOX_CLASSES: list[SchemaClass] = [
         parent="Organization",
     ),
     SchemaClass(
+        name="LegalAct",
+        status=SchemaStatus.CORE,
+        parent="Document",
+        description="Нормативно-правовой акт: закон, указ, декрет",
+    ),
+    SchemaClass(
+        name="Regulation",
+        status=SchemaStatus.CORE,
+        parent="Document",
+        description="Локальный нормативный акт, положение, инструкция",
+    ),
+    SchemaClass(
         name="Technology",
         status=SchemaStatus.CORE,
-        description="Технологии, фреймворки, языки программирования",
         parent="Concept",
+        description="Технологии, фреймворки, языки программирования",
     ),
     SchemaClass(
         name="TimePeriod",
