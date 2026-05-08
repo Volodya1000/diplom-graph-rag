@@ -41,11 +41,10 @@ from src.persistence.neo4j.session_manager import Neo4jSessionManager
 
 @pytest.fixture(scope="session")
 def app_settings() -> AppSettings:
-    """
-    Единый источник правды для integration-тестов.
-    Конфиг грузится один раз из YAML и .env.
-    """
-    return load_config()
+    return load_config(
+        yaml_path="config.yml",
+        override_path="config.test.yaml",
+    )
 
 
 @pytest.fixture(scope="session")

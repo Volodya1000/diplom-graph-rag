@@ -1,0 +1,4 @@
+llm:
+  provider: ollama
+  model_name: "gpt-oss:20b-cloud"
+  is_cloud: true
