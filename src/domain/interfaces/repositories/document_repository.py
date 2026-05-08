@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.domain.models.nodes import ChunkNode, DocumentNode
+from src.domain.models.nodes import ChunkNode, DocumentNode, DocumentStats
 
 
 class IDocumentRepository(ABC):
@@ -12,3 +12,7 @@ class IDocumentRepository(ABC):
     async def get_document_by_filename(self, filename: str) -> list[DocumentNode]: ...
     @abstractmethod
     async def get_chunks_by_document(self, doc_id: str) -> list[ChunkNode]: ...
+    @abstractmethod
+    async def get_all_documents_with_stats(self) -> list[DocumentStats]: ...
+    @abstractmethod
+    async def get_document_stats(self, doc_id: str) -> DocumentStats | None: ...

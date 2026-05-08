@@ -1,7 +1,7 @@
 import logging
 
 from src.domain.interfaces.repositories.document_repository import IDocumentRepository
-from src.domain.models.nodes import ChunkNode, DocumentNode
+from src.domain.models.nodes import ChunkNode, DocumentNode, DocumentStats
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
 
 from .queries.document_queries import (
@@ -9,6 +9,8 @@ from .queries.document_queries import (
     GetDocumentByFilenameQuery,
     SaveChunkQuery,
     SaveDocumentQuery,
+    GetDocumentStatsQuery,
+    GetAllDocumentsStatsQuery,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,3 +40,10 @@ class Neo4jDocumentRepository(Neo4jBaseRepository, IDocumentRepository):
 
     async def get_chunks_by_document(self, doc_id: str) -> list[ChunkNode]:
         return await self._fetch_all(GetChunksByDocumentQuery(doc_id=doc_id))
+
+    async def get_all_documents_with_stats(self) -> list[DocumentStats]:
+        return await self._fetch_all(GetAllDocumentsStatsQuery())
+
+    async def get_document_stats(self, doc_id: str) -> DocumentStats | None:
+        results = await self._fetch_all(GetDocumentStatsQuery(doc_id=doc_id))
+        return results[0] if results else None

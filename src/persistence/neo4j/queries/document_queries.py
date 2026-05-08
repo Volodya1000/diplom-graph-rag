@@ -1,7 +1,8 @@
+import datetime
 from dataclasses import dataclass
 from typing import Any
 
-from src.domain.models.nodes import ChunkNode, DocumentNode
+from src.domain.models.nodes import ChunkNode, DocumentNode, DocumentStats
 from src.persistence.neo4j.mappers.node_mappers import map_to_chunk, map_to_document
 
 from .base import Neo4jQuery
@@ -96,3 +97,92 @@ class GetChunksByDocumentQuery(Neo4jQuery[ChunkNode]):
 
     def map_record(self, record: dict[str, Any]) -> ChunkNode:
         return map_to_chunk(record)
+
+
+def map_to_document_stats(record: dict[str, Any]) -> DocumentStats:
+    upload_date = record.get("upload_date")
+
+    # Neo4j кастомные даты → Python datetime
+    if upload_date is not None and hasattr(upload_date, "to_native"):
+        upload_date = upload_date.to_native()
+
+    # runtime защита + помощь type checker'у
+    if not isinstance(upload_date, datetime.datetime):
+        raise TypeError(f"Invalid upload_date: expected datetime, got {type(upload_date)}")
+
+    return DocumentStats(
+        doc_id=record["doc_id"],
+        filename=record["filename"],
+        upload_date=upload_date,
+        chunks_count=record.get("chunks_count", 0),
+        entities_count=record.get("entities_count", 0),
+        triples_count=record.get("triples_count", 0),
+        communities_count=record.get("communities_count", 0),
+    )
+
+
+@dataclass
+class GetAllDocumentsStatsQuery(Neo4jQuery[DocumentStats]):
+    def get_query(self) -> str:
+        return """
+            MATCH (d:Document)
+            CALL {
+                WITH d
+                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})
+                RETURN count(c) AS chunks_count
+            }
+            CALL {
+                WITH d
+                OPTIONAL MATCH (i:Instance)-[:MENTIONED_IN]->(c:Chunk {doc_id: d.doc_id})
+                RETURN count(DISTINCT i) AS entities_count, count(DISTINCT i.community_id) AS communities_count
+            }
+            CALL {
+                WITH d
+                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)
+                WHERE r.chunk_id = c.chunk_id
+                RETURN count(DISTINCT r) AS triples_count
+            }
+            RETURN d.doc_id AS doc_id, d.filename AS filename, d.upload_date AS upload_date,
+                   chunks_count, entities_count, triples_count, communities_count
+            ORDER BY d.upload_date DESC
+        """
+
+    def get_params(self) -> dict[str, Any]:
+        return {}
+
+    def map_record(self, record: dict[str, Any]) -> DocumentStats:
+        return map_to_document_stats(record)
+
+
+@dataclass
+class GetDocumentStatsQuery(Neo4jQuery[DocumentStats]):
+    doc_id: str
+
+    def get_query(self) -> str:
+        return """
+            MATCH (d:Document {doc_id: $doc_id})
+            CALL {
+                WITH d
+                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})
+                RETURN count(c) AS chunks_count
+            }
+            CALL {
+                WITH d
+                OPTIONAL MATCH (i:Instance)-[:MENTIONED_IN]->(c:Chunk {doc_id: d.doc_id})
+                RETURN count(DISTINCT i) AS entities_count, count(DISTINCT i.community_id) AS communities_count
+            }
+            CALL {
+                WITH d
+                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)
+                WHERE r.chunk_id = c.chunk_id
+                RETURN count(DISTINCT r) AS triples_count
+            }
+            RETURN d.doc_id AS doc_id, d.filename AS filename, d.upload_date AS upload_date,
+                   chunks_count, entities_count, triples_count, communities_count
+        """
+
+    def get_params(self) -> dict[str, Any]:
+        return {"doc_id": self.doc_id}
+
+    def map_record(self, record: dict[str, Any]) -> DocumentStats:
+        return map_to_document_stats(record)

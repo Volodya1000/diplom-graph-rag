@@ -23,3 +23,4 @@ from src.presentation.cli.export_ontology_cmd import register  # noqa
 from src.presentation.cli.update_ontology_cmd import register  # noqa
 from src.presentation.cli.init_ontology_cmd import register  # noqa
 from src.presentation.cli.drop_db_cmd import register  # noqa
+from src.presentation.cli.doc_list_cmd import register  # noqa
