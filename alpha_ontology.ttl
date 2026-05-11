@@ -3,16 +3,12 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# ============================================
-# GR_A3 Ontology — T-Box (только схема)
-# ============================================
-
 <http://example.org/gr_a3> a owl:Ontology ;
     rdfs:label "GR_A3 Knowledge Graph Ontology" ;
     rdfs:comment "Экспортировано из проекта gr_a3, обновлено для риск-менеджмента" .
 
 # ============================================
-# КЛАССЫ (Classes)
+# КЛАССЫ
 # ============================================
 
 :Address a owl:Class ;
@@ -26,16 +22,14 @@
 
 :Risk a owl:Class ;
     rdfs:subClassOf :Concept ;
-    rdfs:comment "Виды рисков (Кредитный, Операционный, Репутационный и т.д.)" .
+    rdfs:comment "Виды рисков" .
 
 :Instrument a owl:Class ;
     rdfs:subClassOf :Concept ;
-    rdfs:comment "Инструменты, меры и методы управления (Лимиты, Стресс-тестирование)" .
+    rdfs:comment "Инструменты управления" .
 
 :Date a owl:Class .
-
 :Document a owl:Class .
-
 :Event a owl:Class .
 
 :GovernmentOrg a owl:Class ;
@@ -45,7 +39,6 @@
     rdfs:subClassOf :Document .
 
 :LegalEntity a owl:Class .
-
 :Location a owl:Class .
 
 :Organization a owl:Class ;
@@ -57,9 +50,7 @@
     rdfs:subClassOf :Person .
 
 :Process a owl:Class .
-
 :Product a owl:Class .
-
 :Project a owl:Class .
 
 :Regulation a owl:Class ;
@@ -74,7 +65,7 @@
     rdfs:subClassOf :Company .
 
 :System a owl:Class ;
-    rdfs:comment "Система: организационная или ИТ-система" .
+    rdfs:comment "Организационная или ИТ система" .
 
 :Technology a owl:Class ;
     rdfs:subClassOf :Concept .
@@ -100,9 +91,8 @@
 :Department a owl:Class ;
     rdfs:subClassOf :Organization .
 
-
 # ============================================
-# ОБЪЕКТНЫЕ СВОЙСТВА (Object Properties)
+# OBJECT PROPERTIES (исправленные)
 # ============================================
 
 :ACQUIRED a owl:ObjectProperty ;
@@ -246,44 +236,25 @@
     rdfs:range :Organization .
 
 # ============================================
-# СЛОЖНЫЕ ОТНОШЕНИЯ (С множественным Domain/Range)
+# УПРОЩЁННЫЕ (БЕЗ UNION OF)
 # ============================================
 
-# Расширен domain для USES
 :USES a owl:ObjectProperty ;
-    rdfs:domain[
-        a owl:Class ;
-        owl:unionOf ( :Product :System :Process )
-    ] ;
+    rdfs:domain :Product, :System, :Process ;
     rdfs:range :Concept ;
-    rdfs:comment "Продукт, Система или Процесс использует концепцию / технологию" .
+    rdfs:comment "Использует концепцию или технологию" .
 
-# Новое свойство: Снижает/Минимизирует риск
 :MITIGATES a owl:ObjectProperty ;
-    rdfs:domain[
-        a owl:Class ;
-        owl:unionOf ( :Process :Instrument :System :Department )
-    ] ;
+    rdfs:domain :Process, :Instrument, :System, :Department ;
     rdfs:range :Risk ;
-    rdfs:comment "Процесс или Инструмент снижает / минимизирует / ограничивает Риск" .
+    rdfs:comment "Снижает или минимизирует риск" .
 
-# Новое свойство: Осуществляет мониторинг
 :MONITORS a owl:ObjectProperty ;
-    rdfs:domain[
-        a owl:Class ;
-        owl:unionOf ( :Organization :Department :Person :System )
-    ] ;
-    rdfs:range[
-        a owl:Class ;
-        owl:unionOf ( :Process :Concept :Risk )
-    ] ;
-    rdfs:comment "Организация или подразделение осуществляет мониторинг риска или показателя" .
+    rdfs:domain :Organization, :Department, :Person, :System ;
+    rdfs:range :Process, :Concept, :Risk ;
+    rdfs:comment "Осуществляет мониторинг" .
 
-# Новое свойство: Внедряет/Реализует
 :IMPLEMENTS a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range[
-        a owl:Class ;
-        owl:unionOf ( :Process :Instrument :System )
-    ] ;
-    rdfs:comment "Организация внедряет или реализует систему/процесс/инструмент" .
+    rdfs:range :Process, :Instrument, :System ;
+    rdfs:comment "Внедряет или реализует" .

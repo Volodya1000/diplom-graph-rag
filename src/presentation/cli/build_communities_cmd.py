@@ -101,14 +101,11 @@ async def _run(
                 reverse=True,
             ):
                 entities = ", ".join(comm.key_entities[:5])
-                summary = (
-                    (comm.summary[:80] + "…") if comm.summary and len(comm.summary) > 80 else (comm.summary or "—")
-                )
                 table.add_row(
                     str(comm.community_id),
                     str(comm.entity_count),
                     entities,
-                    summary,
+                    comm.summar,
                 )
 
             console.print(table)

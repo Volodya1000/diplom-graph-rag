@@ -7,6 +7,8 @@ import pytest
 from src.application.use_cases.update_ontology_use_case import UpdateOntologyUseCase
 from src.domain.ontology.schema import SchemaClass, SchemaRelation, SchemaStatus
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.integration
 class TestUpdateOntologyUseCase:

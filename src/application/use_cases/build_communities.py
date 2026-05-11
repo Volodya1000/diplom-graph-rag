@@ -1,13 +1,6 @@
-"""
-Use Case: Community Detection + генерация summaries.
-
-Рефакторинг:
-  - Убрана зависимость от Neo4jSessionManager (DIP)
-  - Промпты вынесены в отдельный файл (SRP)
-  - save_community_summary перенесён в IGraphAnalyticsService
-"""
-
 import logging
+
+from pydantic import BaseModel, Field
 
 from src.domain.interfaces.services.answer_generator import IAnswerGenerator
 from src.domain.interfaces.services.graph_analytics_service import (
@@ -19,6 +12,14 @@ from src.infrastructure.llm.prompts.community_summary import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class CommunitySummaryOutput(BaseModel):
+    """Structured output для summary сообщества."""
+
+    name: str = Field(description="Емкое название сообщества (3-6 слов)")
+
+    summary: str = Field(description="Краткое описание сообщества (2-4 предложения)")
 
 
 class BuildCommunitiesUseCase:
@@ -38,25 +39,29 @@ class BuildCommunitiesUseCase:
         force: bool = False,
     ) -> dict:
         logger.info(
-            f"🧩 Build communities: algorithm={algorithm}, force={force}, min_size={min_community_size}",
+            "🧩 Build communities: algorithm=%s, force=%s, min_size=%s",
+            algorithm,
+            force,
+            min_community_size,
         )
 
-        # 1. Проекция
         if force:
             await self._analytics.drop_projection()
+
         await self._analytics.ensure_projection()
 
-        # 2. Community detection (Сырой прогон)
         raw_count = await self._analytics.detect_communities(algorithm=algorithm)
 
-        # 3. ЖЕСТКАЯ ОЧИСТКА: удаляем мелкий мусор
         await self._analytics.cleanup_small_communities(min_size=min_community_size)
 
-        # 4. Получаем ИТОГОВЫЙ список валидных сообществ
         communities = await self._analytics.get_communities()
+
         valid_count = len(communities)
+
         logger.info(
-            f"🧩 Итоговых валидных сообществ: {valid_count} (было до очистки: {raw_count})",
+            "🧩 Итоговых валидных сообществ: %s (было до очистки: %s)",
+            valid_count,
+            raw_count,
         )
 
         if not generate_summaries:
@@ -65,41 +70,70 @@ class BuildCommunitiesUseCase:
                 "summaries_generated": 0,
             }
 
-        # 5. Генерация summaries (теперь eligible - это все оставшиеся)
-        summaries_count = 0
-        eligible = [c for c in communities if (force or not c.summary)]
+        eligible = [c for c in communities if force or not c.summary]
 
-        for i, comm in enumerate(eligible, 1):
-            members = await self._analytics.get_community_members(comm.community_id)
+        summaries_count = 0
+
+        for index, community in enumerate(eligible, start=1):
+            members = await self._analytics.get_community_members(community.community_id)
+
             if not members:
                 continue
 
-            context = self._build_context(comm.community_id, members)
-
-            summary = await self._generator.generate(
-                question="Кратко опиши это сообщество",
-                context=context,
-                system_prompt=COMMUNITY_SUMMARY_SYSTEM,
+            context = self._build_context(
+                community.community_id,
+                members,
             )
+
+            try:
+                parsed = await self._generator.generate_structured(
+                    question=("Проанализируй сообщество и создай краткое summary."),
+                    context=context,
+                    system_prompt=COMMUNITY_SUMMARY_SYSTEM,
+                    output_model=CommunitySummaryOutput,
+                )
+
+                name = parsed.name.strip()
+                summary = parsed.summary.strip()
+
+            except Exception as e:
+                logger.exception(
+                    "❌ Community summary generation failed for %s: %s",
+                    community.community_id,
+                    e,
+                )
+
+                name = f"Сообщество #{community.community_id}"
+
+                summary = "Не удалось автоматически сгенерировать описание сообщества."
 
             await self._analytics.save_community_summary(
-                community_id=comm.community_id,
+                community_id=community.community_id,
                 summary=summary,
-                key_entities=comm.key_entities,
+                key_entities=community.key_entities,
+                name=name,
             )
+
             summaries_count += 1
 
             logger.info(
-                f"📝 [{i}/{len(eligible)}] Community #{comm.community_id} "
-                f"({comm.entity_count} entities): "
-                f"{summary[:60]}…",
+                "📝[%s/%s] %s: %s…",
+                index,
+                len(eligible),
+                name,
+                summary,
             )
 
         result = {
             "communities": valid_count,
             "summaries_generated": summaries_count,
         }
-        logger.info(f"✅ Build communities done: {result}")
+
+        logger.info(
+            "✅ Build communities done: %s",
+            result,
+        )
+
         return result
 
     @staticmethod
@@ -110,7 +144,7 @@ class BuildCommunitiesUseCase:
         members_text = "\n".join(f"• {m['name']} [{m['class_name']}]" for m in members)
 
         relations_lines = [
-            f"  {m['name']} —{rel['predicate']}→ {rel['target']}"
+            (f"  {m['name']} —{rel['predicate']}→ {rel['target']}")
             for m in members
             for rel in m.get("relations", [])
             if rel.get("target")

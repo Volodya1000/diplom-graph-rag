@@ -29,12 +29,14 @@ class IGraphAnalyticsService(ABC):
         self,
         community_id: int,
     ) -> list[dict[str, Any]]: ...
+
     @abstractmethod
     async def save_community_summary(
         self,
         community_id: int,
         summary: str,
         key_entities: list[str],
+        name: str = "",
     ) -> None: ...
     @abstractmethod
     async def personalized_pagerank(

@@ -1,15 +1,6 @@
 import logging
-from typing import cast, Any
 
-from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from src.domain.interfaces.services.synonym_resolver import ISynonymResolver
 from src.domain.models.nodes import InstanceNode
@@ -18,6 +9,7 @@ from src.infrastructure.llm.llm_factory import ChatModelFactory
 from src.infrastructure.llm.prompts.synonym_resolution import (
     get_synonym_resolution_prompt,
 )
+from src.infrastructure.llm.structured_runner import StructuredOutputRunner
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +27,7 @@ class _SynonymOutput(BaseModel):
 
 class OllamaSynonymResolver(ISynonymResolver):
     def __init__(self, factory: ChatModelFactory):
-        self._llm = factory.create_json(temperature=0.1)
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type((Exception,)),
-        before_sleep=before_sleep_log(cast(Any, logger), logging.WARNING),
-        reraise=True,
-    )
-    async def _invoke_chain(self, chain: Runnable, params: dict) -> _SynonymOutput:
-        return await chain.ainvoke(params)
+        self._runner = StructuredOutputRunner(factory.create_json(temperature=0.1))
 
     async def find_synonym_groups(
         self,
@@ -64,18 +46,12 @@ class OllamaSynonymResolver(ISynonymResolver):
                 entity_lines.append(f"• {inst.name} [{inst.class_name}]")
             id_by_name.setdefault(inst.name.lower(), []).append(inst.instance_id)
 
-        structured_llm = self._llm.with_structured_output(
-            _SynonymOutput,
-            method="json_mode",
-        )
-        prompt = get_synonym_resolution_prompt()
-
-        chain = prompt | structured_llm
-
         try:
-            parsed: _SynonymOutput = await self._invoke_chain(
-                chain,
-                {
+            # Вызываем унифицированный хелпер
+            parsed = await self._runner.execute(
+                prompt_template=get_synonym_resolution_prompt(),
+                output_model=_SynonymOutput,
+                params={
                     "document_context": document_context,
                     "text_snippets": text_snippets,
                     "entities_list": "\n".join(entity_lines),

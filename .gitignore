@@ -103,3 +103,5 @@ site/
 plugins/
 
 pipelines/graphrag_pipeline/
+
+allure-results/

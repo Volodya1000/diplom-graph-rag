@@ -2,8 +2,7 @@ import logging
 import re
 from typing import cast, Any
 
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
 from tenacity import (
     before_sleep_log,
@@ -23,10 +22,10 @@ from src.domain.models.extraction import (
 from src.domain.ontology.schema import SchemaClass, SchemaRelation
 from src.domain.ontology.schema_validator import SchemaValidator
 from src.infrastructure.llm.llm_factory import ChatModelFactory
-from src.infrastructure.llm.output_cleaners import clean_json_output
 from src.infrastructure.llm.prompts.entity_extraction import (
     get_entity_extraction_prompt,
 )
+from src.infrastructure.llm.structured_runner import StructuredOutputRunner
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ class OllamaClient(ILLMClient):
 
     def __init__(self, factory: ChatModelFactory, extraction_settings: ExtractionSettings):
         # Используем JSON-режим для извлечения структур
-        self._llm = factory.create_json(temperature=0.1)
+        self._runner = StructuredOutputRunner(factory.create_json(temperature=0.1))
         self._settings = extraction_settings
 
     @retry(
@@ -91,8 +90,6 @@ class OllamaClient(ILLMClient):
             logger.exception(f"❌ LLM extraction failed: {e}")
             return ExtractionResult()
 
-    # --- Приватные методы (Инкапсуляция и SRP) ---
-
     async def _run_extraction_chain(
         self,
         text: str,
@@ -100,17 +97,14 @@ class OllamaClient(ILLMClient):
         relations: list[SchemaRelation],
         known_entities: str,
     ) -> _ExtractionOutput:
-        """Инкапсулирует логику создания и вызова цепочки LangChain."""
+        """Использует единый раннер для генерации JSON."""
         validator = SchemaValidator(classes, relations)
-        parser = PydanticOutputParser(pydantic_object=_ExtractionOutput)
+        prompt = get_entity_extraction_prompt()
 
-        prompt = get_entity_extraction_prompt().partial(format_instructions=parser.get_format_instructions())
-
-        chain = prompt | self._llm | RunnableLambda(clean_json_output) | parser
-
-        return await self._invoke_chain(
-            chain,
-            {
+        return await self._runner.execute(
+            prompt_template=prompt,
+            output_model=_ExtractionOutput,
+            params={
                 "tbox_classes": validator.format_hierarchy_tree(),
                 "tbox_relations": validator.format_relations(),
                 "known_entities": known_entities or "(пока нет)",

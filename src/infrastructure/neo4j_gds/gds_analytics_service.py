@@ -1,10 +1,19 @@
 import logging
 from typing import Any
 
+from collections import Counter
+
 from src.domain.interfaces.services.graph_analytics_service import (
     IGraphAnalyticsService,
 )
-from src.domain.models.community import GraphCommunity
+from src.domain.models.community import (
+    GraphCommunity,
+    CommunityDetails,
+    CommunityHub,
+    CommunityBoundaryNode,
+    CommunityNode,
+    CommunityEdge,
+)
 from src.persistence.neo4j.base_repository import Neo4jBaseRepository
 from src.persistence.neo4j.queries.analytics_queries import (
     CleanupSmallCommunitiesQuery,
@@ -16,6 +25,7 @@ from src.persistence.neo4j.queries.analytics_queries import (
     GraphProjectQuery,
     PersonalizedPageRankQuery,
     SaveCommunitySummaryQuery,
+    GetCommunityDetailsQuery,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,12 +79,14 @@ class Neo4jGDSAnalyticsService(Neo4jBaseRepository, IGraphAnalyticsService):
         community_id: int,
         summary: str,
         key_entities: list[str],
+        name: str = "",
     ) -> None:
         await self._execute(
             SaveCommunitySummaryQuery(
                 community_id=community_id,
                 summary=summary,
                 key_entities=key_entities,
+                name=name,
             ),
         )
 
@@ -102,3 +114,42 @@ class Neo4jGDSAnalyticsService(Neo4jBaseRepository, IGraphAnalyticsService):
                 f"🧹 Удалено {count} узлов из слишком мелких сообществ (размер < {min_size})",
             )
         return count
+
+    async def get_community_details(self, community_id: int) -> CommunityDetails | None:
+        data = await self._fetch_all(GetCommunityDetailsQuery(community_id=community_id))
+        if not data or data[0]["node_count"] == 0:
+            return None
+
+        r = data[0]
+        nodes_c = r.get("node_count", 0)
+        edges_c = r.get("edge_count", 0)
+
+        density = 0.0
+        if nodes_c > 1:
+            density = edges_c / (nodes_c * (nodes_c - 1))
+
+        node_types_count = dict(Counter(r.get("raw_node_types", [])).most_common())
+        rel_types_count = dict(Counter(r.get("raw_rel_types", [])).most_common())
+
+        # Маппим словари Neo4j в строгие Pydantic модели
+        hubs = [CommunityHub(name=h["name"], degree=h["degree"]) for h in r.get("hubs", [])]
+        boundary = [CommunityBoundaryNode(name=b["name"], degree=b["degree"]) for b in r.get("boundary_nodes", [])]
+        nodes = [CommunityNode(name=n["name"], type=n["type"]) for n in r.get("node_list", [])]
+        edges = [CommunityEdge(source=e["source"], type=e["type"], target=e["target"]) for e in r.get("edges", [])]
+
+        return CommunityDetails(
+            community_id=r["community_id"],
+            name=r.get("name"),
+            summary=r.get("summary"),
+            node_count=nodes_c,
+            edge_count=edges_c,
+            density=density,
+            hubs=hubs,
+            boundary_nodes=boundary,
+            dominant_types=node_types_count,
+            dominant_relations=rel_types_count,
+            document_count=r.get("doc_count", 0),
+            documents=r.get("documents", []),
+            nodes=nodes,
+            edges=edges,
+        )
