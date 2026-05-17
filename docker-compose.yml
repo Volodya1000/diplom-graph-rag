@@ -63,23 +63,21 @@ services:
   vllm:
     image: vllm/vllm-openai:latest
     container_name: vllm
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [ gpu ]
-    volumes:
-      - ./gemma-4-e4b:/model
+    runtime: nvidia
     ports:
       - "8000:8000"
     ipc: host
+    volumes:
+      - ./models/qwen2.5-awq:/model
     command: >
-      /model
+      --model /model
+      --host 0.0.0.0
+      --port 8000
       --max-model-len 8192
-      --gpu-memory-utilization 0.85
+      --served-model-name qwen2.5-awq
+      --gpu-memory-utilization 0.90
       --tensor-parallel-size 1
+      --trust-remote-code
     restart: unless-stopped
 volumes:
   neo4j_data:

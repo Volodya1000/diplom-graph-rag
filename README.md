@@ -250,10 +250,10 @@ uv run main.py drop-db
 Для запуска API-сервера в режиме разработки с доступностью извне:
 
 ```bash
-uv run uvicorn src.presentation.api.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn src.presentation.api.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-* **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+* **Swagger UI**: [http://localhost:8001/docs](http://localhost:8001/docs)
 * **Хост**: `0.0.0.0` позволяет принимать запросы не только с `localhost`, но и из локальной сети или Docker-контейнеров.
 
 ---

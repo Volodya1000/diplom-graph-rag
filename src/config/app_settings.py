@@ -31,7 +31,7 @@ class AppSettings(BaseSettings):
     )
 
     embedding_model: str
-    api_base_url: str = "http://localhost:8000"
+    api_base_url: str = "http://localhost:8001"
 
     neo4j: Neo4jSettings
     llm: LLMSettingsType

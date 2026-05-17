@@ -10,7 +10,7 @@ requirements: requests
 """
 
 import os
-from typing import Any, TypedDict
+from typing import Any, TypedDict, Literal
 from collections import defaultdict
 from collections.abc import Generator, Iterator
 from logging import getLogger
@@ -31,12 +31,17 @@ class FileInfo(TypedDict):
 class Pipeline:
     class Valves(BaseModel):
         API_BASE_URL: str = Field(
-            default="http://host.docker.internal:8000/v1",
-            description="Базовый URL вашего FastAPI",
+            default="http://host.docker.internal:8001/v1",
+            description="Базовый URL FastAPI Grpah RAG",
         )
         MODEL_NAME: str = Field(
-            default="graphrag-hybrid",
-            description="Имя модели для API (от этого зависит SearchMode)",
+            default="graphrag-pipeline",
+            description="Имя модели",
+        )
+        # ИСПОЛЬЗУЕМ Literal ДЛЯ СОЗДАНИЯ ВЫПАДАЮЩЕГО СПИСКА В OPEN WEBUI
+        SEARCH_MODE: Literal["local", "global", "local_ppr", "hybrid"] = Field(
+            default="hybrid",
+            description="Стратегия поиска (выберите из списка)",
         )
         TOP_K: int = Field(default=10, description="Количество возвращаемых чанков")
 
@@ -78,8 +83,6 @@ class Pipeline:
             logger.exception("Внутренняя ошибка пайплайна")
             return f"**Внутренняя ошибка пайплайна:** {e!s}"
 
-    # --- Приватные методы (Инкапсуляция и SRP) ---
-
     def _is_ui_auto_title_request(self, message: str) -> bool:
         """Фильтрует системные запросы Open WebUI на генерацию заголовка."""
         msg = message.lower()
@@ -90,13 +93,13 @@ class Pipeline:
         endpoint = f"{self.valves.API_BASE_URL}/chat/completions"
         payload = {
             "model": self.valves.MODEL_NAME,
+            "search_mode": self.valves.SEARCH_MODE,
             "messages": messages,
             "temperature": temperature,
             "top_k": self.valves.TOP_K,
         }
 
         logger.debug(f"Sending request to {endpoint}")
-        # Senior best practice: всегда добавлять timeout для сетевых запросов
         response = requests.post(endpoint, json=payload, timeout=60)
         response.raise_for_status()
 
@@ -108,7 +111,6 @@ class Pipeline:
         if not choices:
             return "Ошибка: Получен пустой ответ от GraphRAG API."
 
-        # Использование списка для конкатенации строк (эффективнее, чем +=)
         reply_parts = [choices[0].get("message", {}).get("content", "")]
 
         sources_text = self._format_sources(data.get("sources", []))
@@ -133,13 +135,11 @@ class Pipeline:
             url = src.get("download_url") or ""
             start, end = src.get("start_page", 0), src.get("end_page", 0)
 
-            # DRY: лаконичное обновление данных
             if url:
                 file_info[filename]["url"] = url
 
             file_info[filename]["score"] = max(file_info[filename]["score"], src.get("relevance", 0.0))
 
-            # Форматирование страниц
             if start == 0:
                 page_str = "Стр. неизвестна"
             elif start == end:
@@ -149,7 +149,6 @@ class Pipeline:
 
             file_info[filename]["pages"].add(page_str)
 
-        # Сборка строк источников
         formatted_lines = []
         for i, (filename, info) in enumerate(file_info.items(), 1):
             pages = ", ".join(sorted(info["pages"]))
