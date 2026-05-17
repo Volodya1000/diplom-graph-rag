@@ -1,5 +1,3 @@
-"""Точка входа для FastAPI."""
-
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -20,14 +18,12 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Создаём контейнер один раз
 container = setup_di()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan-события: запуск и остановка приложения."""
-    # ==================== STARTUP ====================
     try:
         from src.domain.interfaces.repositories.schema_repository import (
             ISchemaRepository,
@@ -41,7 +37,6 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # ==================== SHUTDOWN ====================
     await container.close()
     logger.info("🔌 DI-контейнер и Neo4j driver закрыты")
 

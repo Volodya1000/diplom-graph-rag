@@ -4,8 +4,8 @@ import uuid
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter
 
+from domain.models.search import SearchMode
 from src.application.use_cases.answer_question import AnswerQuestionUseCase
-from src.domain.models.search import SearchMode
 from src.presentation.api.schemas.chat import (
     ChatChoice,
     ChatCompletionRequest,
@@ -30,15 +30,9 @@ async def create_chat_completion(
     if not user_message:
         raise ValueError("No user message found")
 
-    mode_str = request.model.split("-")[-1] if "-" in request.model else "hybrid"
-    try:
-        search_mode = SearchMode(mode_str)
-    except ValueError:
-        search_mode = SearchMode.HYBRID
-
     response = await use_case.execute(
         question=user_message,
-        mode=search_mode,
+        mode=request.search_mode or SearchMode.HYBRID,
         top_k=request.top_k or 10,
     )
 

@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from domain.models.search import SearchMode
+
 
 class ChatMessage(BaseModel):
     role: str
@@ -8,6 +10,7 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     model: str = "graphrag-hybrid"
+    search_mode: SearchMode | None = None
     messages: list[ChatMessage]
     temperature: float | None = 0.7
     top_k: int | None = 10

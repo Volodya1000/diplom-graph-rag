@@ -35,7 +35,7 @@ class AnswerQuestionUseCase:
         top_k: int = 10,
     ) -> AnswerResponse:
         logger.info(
-            f"❓ Question: «{question[:80]}…» | mode={mode.value} | top_k={top_k}",
+            f"❓ Question: «{question} | mode={mode.value} | top_k={top_k}",
         )
         query_embedding = await self.embedder.embed_text(question)
         strategy = self.registry.get(mode)
