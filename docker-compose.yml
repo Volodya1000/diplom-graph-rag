@@ -61,26 +61,32 @@ services:
       - host.docker.internal:host-gateway
 
   vllm:
-      image: vllm/vllm-openai:latest
-      container_name: vllm
-      runtime: nvidia
-      ports:
-        - "8000:8000"
-      ipc: host
-      volumes:
-        - ./models/qwen2.5-awq:/model:ro
-      command: >
-        /model
-        --host 0.0.0.0
-        --port 8000
-        --served-model-name Qwen2.5-7B-Instruct-AWQ
-        --max-model-len 8192
-        --gpu-memory-utilization 0.90
-        --tensor-parallel-size 1
-        --trust-remote-code
-        --enable-prefix-caching
-        --quantization awq_marlin
-      restart: unless-stopped
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+
+    ipc: host
+
+    volumes:
+      - ./models/Qwen3.5-9B-AWQ:/model:ro
+
+    command: >
+      --model /model
+      --host 0.0.0.0
+      --port 8000
+      --served-model-name Qwen3.5-9B-AWQ
+      --max-model-len 16384
+      --gpu-memory-utilization 0.85
+      --tensor-parallel-size 1
+      --trust-remote-code
+      --enable-prefix-caching
+      --quantization awq_marlin
+      --enforce-eager
+      --cpu-offload-gb 20
+
+    restart: unless-stopped
 volumes:
   neo4j_data:
   neo4j_logs:

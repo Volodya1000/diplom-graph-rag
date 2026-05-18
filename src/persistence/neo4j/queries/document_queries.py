@@ -138,8 +138,8 @@ class GetAllDocumentsStatsQuery(Neo4jQuery[DocumentStats]):
             }
             CALL {
                 WITH d
-                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)
-                WHERE r.chunk_id = c.chunk_id
+                OPTIONAL MATCH (c1:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)-[:MENTIONED_IN]->(c2:Chunk {doc_id: d.doc_id})
+                WHERE type(r) <> 'MENTIONED_IN' AND type(r) <> 'INSTANCE_OF'
                 RETURN count(DISTINCT r) AS triples_count
             }
             RETURN d.doc_id AS doc_id, d.filename AS filename, d.upload_date AS upload_date,
@@ -173,8 +173,8 @@ class GetDocumentStatsQuery(Neo4jQuery[DocumentStats]):
             }
             CALL {
                 WITH d
-                OPTIONAL MATCH (c:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)
-                WHERE r.chunk_id = c.chunk_id
+                OPTIONAL MATCH (c1:Chunk {doc_id: d.doc_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)-[:MENTIONED_IN]->(c2:Chunk {doc_id: d.doc_id})
+                WHERE type(r) <> 'MENTIONED_IN' AND type(r) <> 'INSTANCE_OF'
                 RETURN count(DISTINCT r) AS triples_count
             }
             RETURN d.doc_id AS doc_id, d.filename AS filename, d.upload_date AS upload_date,

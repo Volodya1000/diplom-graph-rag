@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any, Union
 
 import yaml
-from pydantic import Field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.config.chunking_settings import ChunkingSettings
@@ -31,7 +31,15 @@ class AppSettings(BaseSettings):
     )
 
     embedding_model: str
-    api_base_url: str = "http://localhost:8001"
+
+    api_host: str = "0.0.0.0"
+    api_port: int = 8001
+
+    @computed_field
+    @property
+    def api_base_url(self) -> str:
+        host = "localhost" if self.api_host == "0.0.0.0" else self.api_host
+        return f"http://{host}:{self.api_port}"
 
     neo4j: Neo4jSettings
     llm: LLMSettingsType

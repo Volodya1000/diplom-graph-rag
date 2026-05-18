@@ -62,7 +62,6 @@ class ContextBuilder:
             if chunk.start_page == 0:
                 pages_info = "Стр. неизвестна"
 
-            # Убрано дублирование "if chunk.headings and chunk.headings:"
             if chunk.headings:
                 headings_path = " → ".join(chunk.headings)
                 header = (

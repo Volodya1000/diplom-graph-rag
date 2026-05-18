@@ -188,3 +188,13 @@ class TestIngestHappyPath:
 
         assert len(await doc_repo.get_document_by_filename("test.pdf")) == 1
         assert len(await doc_repo.get_chunks_by_document(doc_id)) == 2
+        assert len(await doc_repo.get_document_by_filename("test.pdf")) == 1
+        assert len(await doc_repo.get_chunks_by_document(doc_id)) == 2
+
+        #  Проверяем, что "Колобок" (встречается в обоих чанках) имеет 2 связи MENTIONED_IN
+        async with doc_repo._sm.session() as s:
+            res = await s.run(
+                "MATCH (i:Instance {name: 'Колобок'})-[:MENTIONED_IN]->(c:Chunk) RETURN count(c) as c_count"
+            )
+            count_data = await res.data()
+            assert count_data[0]["c_count"] == 2, "Сущность должна быть привязана к обоим чанкам!"

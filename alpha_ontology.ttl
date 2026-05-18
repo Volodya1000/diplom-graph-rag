@@ -5,247 +5,354 @@
 
 <http://example.org/gr_a3> a owl:Ontology ;
     rdfs:label "GR_A3 Knowledge Graph Ontology" ;
-    rdfs:comment "Экспортировано из проекта gr_a3, обновлено для риск-менеджмента" .
+    rdfs:comment "Экспортировано из проекта gr_a3, обновлено для риск-менеджмента и ПОД/ФТ" .
 
 # ============================================
 # КЛАССЫ
 # ============================================
 
 :Address a owl:Class ;
-    rdfs:subClassOf :Location .
+    rdfs:subClassOf :Location ;
+    rdfs:comment "Почтовый или физический адрес" .
 
 :Company a owl:Class ;
-    rdfs:subClassOf :Organization .
+    rdfs:subClassOf :Organization ;
+    rdfs:comment "Коммерческая компания" .
 
 :Concept a owl:Class ;
-    rdfs:comment "Понятия: термины, абстракции" .
+    rdfs:comment "Понятия, термины и абстракции" .
 
 :Risk a owl:Class ;
     rdfs:subClassOf :Concept ;
-    rdfs:comment "Виды рисков" .
+    rdfs:comment "Виды рисков в деятельности организации" .
 
 :Instrument a owl:Class ;
     rdfs:subClassOf :Concept ;
-    rdfs:comment "Инструменты управления" .
+    rdfs:comment "Инструменты управления рисками и процессами" .
 
-:Date a owl:Class .
-:Document a owl:Class .
-:Event a owl:Class .
+:Control a owl:Class ;
+    rdfs:subClassOf :Process ;
+    rdfs:comment "Контрольные меры и процедуры" .
+
+:Client a owl:Class ;
+    rdfs:comment "Клиент организации" .
+
+:PEP a owl:Class ;
+    rdfs:subClassOf :Client ;
+    rdfs:comment "Политически значимое лицо" .
+
+:SuspiciousOperation a owl:Class ;
+    rdfs:comment "Подозрительная операция или транзакция" .
+
+:Date a owl:Class ;
+    rdfs:comment "Календарная дата" .
+
+:Document a owl:Class ;
+    rdfs:comment "Официальный документ" .
+
+:Event a owl:Class ;
+    rdfs:comment "Событие или инцидент" .
 
 :GovernmentOrg a owl:Class ;
-    rdfs:subClassOf :Organization .
+    rdfs:subClassOf :Organization ;
+    rdfs:comment "Государственный орган" .
 
 :LegalAct a owl:Class ;
-    rdfs:subClassOf :Document .
+    rdfs:subClassOf :Document ;
+    rdfs:comment "Нормативно-правовой акт" .
 
-:LegalEntity a owl:Class .
-:Location a owl:Class .
+:LegalEntity a owl:Class ;
+    rdfs:comment "Юридическое лицо" .
+
+:Location a owl:Class ;
+    rdfs:comment "Географическое местоположение" .
 
 :Organization a owl:Class ;
-    rdfs:subClassOf :LegalEntity .
+    rdfs:subClassOf :LegalEntity ;
+    rdfs:comment "Организация любого типа" .
 
-:Person a owl:Class .
+:Person a owl:Class ;
+    rdfs:comment "Физическое лицо (общий класс)" .
 
 :PhysicalPerson a owl:Class ;
-    rdfs:subClassOf :Person .
+    rdfs:subClassOf :Person ;
+    rdfs:comment "Конкретное физическое лицо" .
 
-:Process a owl:Class .
-:Product a owl:Class .
-:Project a owl:Class .
+:Process a owl:Class ;
+    rdfs:comment "Бизнес-процесс или процедура" .
+
+:Product a owl:Class ;
+    rdfs:comment "Продукт или услуга организации" .
+
+:Project a owl:Class ;
+    rdfs:comment "Проект организации" .
 
 :Regulation a owl:Class ;
-    rdfs:subClassOf :Document .
+    rdfs:subClassOf :Document ;
+    rdfs:comment "Регуляторный документ или требование" .
 
-:Role a owl:Class .
+:Role a owl:Class ;
+    rdfs:comment "Должностная или функциональная роль" .
 
 :Startup a owl:Class ;
-    rdfs:subClassOf :Company .
+    rdfs:subClassOf :Company ;
+    rdfs:comment "Стартап-компания" .
 
 :Subsidiary a owl:Class ;
-    rdfs:subClassOf :Company .
+    rdfs:subClassOf :Company ;
+    rdfs:comment "Дочерняя компания" .
 
 :System a owl:Class ;
-    rdfs:comment "Организационная или ИТ система" .
+    rdfs:comment "Организационная или ИТ-система" .
 
 :Technology a owl:Class ;
-    rdfs:subClassOf :Concept .
+    rdfs:subClassOf :Concept ;
+    rdfs:comment "Технология или техническое решение" .
 
 :TimePeriod a owl:Class ;
-    rdfs:subClassOf :Date .
+    rdfs:subClassOf :Date ;
+    rdfs:comment "Период времени" .
 
 :Bank a owl:Class ;
-    rdfs:subClassOf :Company .
+    rdfs:subClassOf :Company ;
+    rdfs:comment "Коммерческий банк" .
 
 :BankAccount a owl:Class ;
-    rdfs:subClassOf :Product .
+    rdfs:subClassOf :Product ;
+    rdfs:comment "Банковский счет" .
 
 :BankDeposit a owl:Class ;
-    rdfs:subClassOf :BankAccount .
+    rdfs:subClassOf :BankAccount ;
+    rdfs:comment "Банковский вклад" .
 
 :CentralBank a owl:Class ;
-    rdfs:subClassOf :GovernmentOrg .
-
-:ConflictOfInterest a owl:Class ;
-    rdfs:subClassOf :Risk .
+    rdfs:subClassOf :GovernmentOrg ;
+    rdfs:comment "Центральный банк" .
 
 :Department a owl:Class ;
-    rdfs:subClassOf :Organization .
+    rdfs:subClassOf :Organization ;
+    rdfs:comment "Подразделение организации" .
+
+:ConflictOfInterest a owl:Class ;
+    rdfs:subClassOf :Risk ;
+    rdfs:comment "Конфликт интересов" .
 
 # ============================================
-# OBJECT PROPERTIES (исправленные)
+# OBJECT PROPERTIES
 # ============================================
 
 :ACQUIRED a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range :Company .
+    rdfs:range :Company ;
+    rdfs:comment "Приобретает компанию" .
 
 :APPLIES_TO a owl:ObjectProperty ;
-    rdfs:domain :Document ;
-    rdfs:range :Organization, :Person .
+    rdfs:domain :Document, :Regulation, :Concept ;
+    rdfs:range :Organization, :Person, :Role, :Department ;
+    rdfs:comment "Применяется к субъекту" .
 
 :BORN_ON a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Дата рождения" .
 
 :CAUSED_BY a owl:ObjectProperty ;
-    rdfs:domain :Event ;
-    rdfs:range :Event .
+    rdfs:domain :Event, :Concept, :Risk, :Process ;
+    rdfs:range :Event, :Risk, :Concept ;
+    rdfs:comment "Вызвано указанной причиной" .
+
+:COMPLIES_WITH a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Process, :System ;
+    rdfs:range :LegalAct, :Regulation ;
+    rdfs:comment "Соответствует нормативному акту" .
 
 :CONTAINS a owl:ObjectProperty ;
     rdfs:domain :Location ;
-    rdfs:range :Location .
+    rdfs:range :Location ;
+    rdfs:comment "Содержит в себе другую локацию" .
 
 :CREATED a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Product .
+    rdfs:range :Product ;
+    rdfs:comment "Создал продукт" .
 
 :DIED_ON a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Дата смерти" .
 
 :EMPLOYS a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range :Person .
+    rdfs:range :Person ;
+    rdfs:comment "Нанимает сотрудника" .
 
 :ENDS_ON a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Дата окончания события" .
 
 :FAMILY_RELATION a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Person .
+    rdfs:range :Person ;
+    rdfs:comment "Семейная связь" .
 
 :FOUNDED_ON a owl:ObjectProperty ;
     rdfs:domain :Company ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Дата основания компании" .
 
 :GUARANTEES a owl:ObjectProperty ;
     rdfs:domain :GovernmentOrg ;
-    rdfs:range :BankDeposit .
+    rdfs:range :BankDeposit ;
+    rdfs:comment "Гарантирует вклад" .
 
 :HAS_ACCOUNT a owl:ObjectProperty ;
     rdfs:domain :Organization, :Person ;
-    rdfs:range :BankAccount .
+    rdfs:range :BankAccount ;
+    rdfs:comment "Имеет банковский счет" .
+
+:HAS_CONTROL a owl:ObjectProperty ;
+    rdfs:domain :System ;
+    rdfs:range :Control ;
+    rdfs:comment "Имеет контрольную меру" .
+
+:HAS_RISK a owl:ObjectProperty ;
+    rdfs:domain :Organization, :Client ;
+    rdfs:range :Risk ;
+    rdfs:comment "Подвержен риску" .
 
 :HAS_ROLE a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Role .
+    rdfs:range :Role ;
+    rdfs:comment "Занимает роль" .
 
 :HEADQUARTERED_IN a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range :Address .
+    rdfs:range :Address ;
+    rdfs:comment "Головной офис находится по адресу" .
+
+:IDENTIFIES a owl:ObjectProperty ;
+    rdfs:domain :Process, :System ;
+    rdfs:range :Risk, :SuspiciousOperation ;
+    rdfs:comment "Выявляет риск или подозрительную операцию" .
 
 :INVOLVES a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Person .
+    rdfs:range :Person ;
+    rdfs:comment "Вовлекает лицо" .
 
 :ISSUED_BY a owl:ObjectProperty ;
     rdfs:domain :Document ;
-    rdfs:range :Organization .
+    rdfs:range :Organization ;
+    rdfs:comment "Выпущен организацией" .
 
 :KNOWS a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Person .
+    rdfs:range :Person ;
+    rdfs:comment "Знает другое лицо" .
 
 :LED_BY a owl:ObjectProperty ;
     rdfs:domain :Project ;
-    rdfs:range :Person .
+    rdfs:range :Person ;
+    rdfs:comment "Руководится лицом" .
 
 :LOCATED_IN a owl:ObjectProperty ;
     rdfs:domain :Organization, :Person, :Product ;
-    rdfs:range :Location .
+    rdfs:range :Location ;
+    rdfs:comment "Находится в локации" .
 
 :MANAGES a owl:ObjectProperty ;
-    rdfs:domain :Organization, :Person ;
-    rdfs:range :Organization, :Process .
+    rdfs:domain :Organization, :Person, :Role, :Department ;
+    rdfs:range :Organization, :Process, :Department, :System ;
+    rdfs:comment "Управляет объектом" .
 
 :OCCURRED_AT a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Location .
+    rdfs:range :Location ;
+    rdfs:comment "Произошло в локации" .
 
 :OCCURRED_ON a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Произошло в дату" .
 
 :OWNS a owl:ObjectProperty ;
     rdfs:domain :Organization, :Person ;
-    rdfs:range :Organization, :Product .
+    rdfs:range :Organization, :Product ;
+    rdfs:comment "Владеет объектом" .
 
 :PARTICIPATED_IN a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Event .
+    rdfs:range :Event ;
+    rdfs:comment "Участвовал в событии" .
 
 :PART_OF a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range :Organization .
+    rdfs:range :Organization ;
+    rdfs:comment "Является частью другой организации" .
 
 :PRODUCED_BY a owl:ObjectProperty ;
     rdfs:domain :Product ;
-    rdfs:range :Organization .
+    rdfs:range :Organization ;
+    rdfs:comment "Произведен организацией" .
 
 :PRODUCES a owl:ObjectProperty ;
     rdfs:domain :Organization ;
-    rdfs:range :Product .
+    rdfs:range :Product ;
+    rdfs:comment "Производит продукт" .
 
 :REGULATES a owl:ObjectProperty ;
     rdfs:domain :CentralBank, :Document ;
-    rdfs:range :Bank, :Organization, :Process .
+    rdfs:range :Bank, :Organization, :Process ;
+    rdfs:comment "Регулирует деятельность" .
 
 :RELATED_TO a owl:ObjectProperty ;
     rdfs:domain :Concept ;
-    rdfs:range :Concept .
+    rdfs:range :Concept ;
+    rdfs:comment "Связан с другим понятием" .
+
+:REPORTS_TO a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :GovernmentOrg ;
+    rdfs:comment "Отчитывается перед государственным органом" .
+
+:REQUIRES a owl:ObjectProperty ;
+    rdfs:domain :Process, :System ;
+    rdfs:range :Concept, :Process ;
+    rdfs:comment "Требует ресурс или процесс" .
 
 :RESIDES_AT a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Address .
+    rdfs:range :Address ;
+    rdfs:comment "Проживает по адресу" .
 
 :STARTS_ON a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Date .
+    rdfs:range :Date ;
+    rdfs:comment "Дата начала события" .
 
 :SUPERVISES a owl:ObjectProperty ;
     rdfs:domain :Department ;
-    rdfs:range :Process .
+    rdfs:range :Process ;
+    rdfs:comment "Контролирует процесс" .
 
 :VENUE a owl:ObjectProperty ;
     rdfs:domain :Event ;
-    rdfs:range :Location .
+    rdfs:range :Location ;
+    rdfs:comment "Место проведения события" .
 
 :WORKS_AT a owl:ObjectProperty ;
     rdfs:domain :Person ;
-    rdfs:range :Organization .
-
-# ============================================
-# УПРОЩЁННЫЕ (БЕЗ UNION OF)
-# ============================================
+    rdfs:range :Organization ;
+    rdfs:comment "Работает в организации" .
 
 :USES a owl:ObjectProperty ;
-    rdfs:domain :Product, :System, :Process ;
-    rdfs:range :Concept ;
-    rdfs:comment "Использует концепцию или технологию" .
+    rdfs:domain :Organization, :Department, :Product, :System, :Process ;
+    rdfs:range :Concept, :Technology, :Instrument ;
+    rdfs:comment "Использует инструмент или технологию" .
 
 :MITIGATES a owl:ObjectProperty ;
-    rdfs:domain :Process, :Instrument, :System, :Department ;
+    rdfs:domain :Organization, :Process, :Instrument, :System, :Department, :Role ;
     rdfs:range :Risk ;
     rdfs:comment "Снижает или минимизирует риск" .
 
@@ -257,4 +364,4 @@
 :IMPLEMENTS a owl:ObjectProperty ;
     rdfs:domain :Organization ;
     rdfs:range :Process, :Instrument, :System ;
-    rdfs:comment "Внедряет или реализует" .
+    rdfs:comment "Внедряет процесс или систему" .

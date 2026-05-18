@@ -42,7 +42,12 @@ class GraphEdgeBuilder:
         return edges
 
     @staticmethod
-    def build_instance_edges(instance: InstanceNode) -> list[GraphEdge]:
+    def build_instance_edges(
+        instance: InstanceNode,
+        current_chunk_id: str | None = None,
+    ) -> list[GraphEdge]:
+        target_chunk_id = current_chunk_id or instance.chunk_id
+
         return [
             GraphEdge(
                 relation_type=GraphRelationType.INSTANCE_OF,
@@ -52,6 +57,6 @@ class GraphEdgeBuilder:
             GraphEdge(
                 relation_type=GraphRelationType.MENTIONED_IN,
                 source_id=instance.instance_id,
-                target_id=instance.chunk_id,
+                target_id=target_chunk_id,
             ),
         ]

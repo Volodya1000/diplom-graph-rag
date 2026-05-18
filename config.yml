@@ -17,6 +17,14 @@ llm:
   is_cloud: true
   local_url: "http://localhost:11434"
 
+#llm:
+#  provider: vllm
+#  model_name: "Qwen2.5-7B-Instruct-AWQ"
+#  temperature: 0.1
+#  max_tokens: 8192
+#  is_cloud: false
+#  local_url: "http://localhost:8000"
+
 chunking:
   tokenizer_model: "sentence-transformers/all-MiniLM-L6-v2" #ai-forever/FRIDA
   max_tokens: 1000

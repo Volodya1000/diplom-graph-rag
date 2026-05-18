@@ -128,14 +128,15 @@ class GetTriplesByChunkQuery(Neo4jQuery[dict[str, Any]]):
 
     def get_query(self) -> str:
         return """
-            MATCH (src:Instance)-[r]->(tgt:Instance)
-            WHERE r.chunk_id = $chunk_id
-            RETURN src.name AS subject_name,
-                   src.class_name AS subject_type,
-                   type(r) AS predicate,
-                   tgt.name AS object_name,
-                   tgt.class_name AS object_type
-        """
+              MATCH (c:Chunk {chunk_id: $chunk_id})<-[:MENTIONED_IN]-(src:Instance)-[r]->(tgt:Instance)-[:MENTIONED_IN]->(c)
+              WHERE type(r) <> 'MENTIONED_IN' AND type(r) <> 'INSTANCE_OF'
+              RETURN DISTINCT
+                     src.name AS subject_name,
+                     src.class_name AS subject_type,
+                     type(r) AS predicate,
+                     tgt.name AS object_name,
+                     tgt.class_name AS object_type
+          """
 
     def get_params(self) -> dict[str, Any]:
         return {"chunk_id": self.chunk_id}

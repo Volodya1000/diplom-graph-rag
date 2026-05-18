@@ -117,10 +117,13 @@ class ExtractEntitiesAndTriplesStep(IIngestStep):
             for inst in instances:
                 if inst.instance_id not in ctx.saved_instance_ids:
                     await self.instance_repo.save_instance(inst)
-                    edges = GraphEdgeBuilder.build_instance_edges(instance=inst)
-                    await self.edge_repo.save_edges(edges)
                     ctx.saved_instance_ids.add(inst.instance_id)
                     saved_this_chunk += 1
+
+                # Всегда добавляем связи (INSTANCE_OF и MENTIONED_IN)
+                # Передаем актуальный chunk_id, чтобы сущность привязалась к текущему чанку!
+                edges = GraphEdgeBuilder.build_instance_edges(instance=inst, current_chunk_id=chunk.chunk_id)
+                await self.edge_repo.save_edges(edges)
 
             # Сохранение триплетов
             for triple in resolved_triples:
